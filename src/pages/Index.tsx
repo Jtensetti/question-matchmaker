@@ -85,20 +85,6 @@ const Index = () => {
     }
   };
 
-  const checkSemanticSimilarity = async (text1: string, text2: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('check-semantic-similarity', {
-        body: { text1, text2 }
-      });
-
-      if (error) throw error;
-      return data.isCorrect;
-    } catch (error) {
-      console.error('Error checking semantic similarity:', error);
-      return false;
-    }
-  };
-
   const handleAnswerSubmit = async (questionId: string, studentAnswer: string) => {
     const question = questions.find((q) => q.id === questionId);
     if (!question) return;
@@ -130,6 +116,14 @@ const Index = () => {
       });
     } catch (error) {
       console.error('Error checking answer:', error);
+      if (error.error?.message?.includes('429') || error.status === 429) {
+        toast({
+          title: "Rate limit reached",
+          description: "Please wait a few seconds before trying again.",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: "Error",
         description: "There was an error checking your answer. Please try again.",
