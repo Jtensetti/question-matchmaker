@@ -5,16 +5,19 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 interface QuestionCardProps {
   question: Question;
   isTeacher?: boolean;
+  isLoading?: boolean;
   onAnswerSubmit?: (answer: string) => void;
 }
 
 export const QuestionCard = ({
   question,
   isTeacher = false,
+  isLoading = false,
   onAnswerSubmit,
 }: QuestionCardProps) => {
   const [answer, setAnswer] = useState("");
@@ -50,9 +53,21 @@ export const QuestionCard = ({
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               className="w-full"
+              disabled={isLoading}
             />
-            <Button onClick={handleSubmit} className="w-full">
-              Submit Answer
+            <Button 
+              onClick={handleSubmit} 
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Checking Answer
+                </>
+              ) : (
+                "Submit Answer"
+              )}
             </Button>
           </div>
         )}

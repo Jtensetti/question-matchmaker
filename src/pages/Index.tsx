@@ -10,6 +10,7 @@ const Index = () => {
   const [isTeacher, setIsTeacher] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const { toast } = useToast();
+  const [isChecking, setIsChecking] = useState(false);
 
   const handleCreateQuestion = (questionText: string, answerText: string) => {
     const newQuestion: Question = {
@@ -25,21 +26,70 @@ const Index = () => {
     });
   };
 
-  const handleAnswerSubmit = (questionId: string, studentAnswer: string) => {
+  const checkSemanticSimilarity = async (text1: string, text2: string) => {
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a teacher evaluating student answers. Respond with "true" if the answers match semantically, and "false" if they don\'t. Only respond with true or false.'
+            },
+            {
+              role: 'user',
+              content: `Question: Compare these answers semantically:
+              Teacher's answer: "${text1}"
+              Student's answer: "${text2}"
+              
+              Are they semantically equivalent? Respond with only true or false.`
+            }
+          ],
+          temperature: 0.3,
+        }),
+      });
+
+      const data = await response.json();
+      const result = data.choices[0].message.content.toLowerCase().includes('true');
+      return result;
+    } catch (error) {
+      console.error('Error checking semantic similarity:', error);
+      return false;
+    }
+  };
+
+  const handleAnswerSubmit = async (questionId: string, studentAnswer: string) => {
     const question = questions.find((q) => q.id === questionId);
     if (!question) return;
 
-    // Case-insensitive comparison with trimmed whitespace
-    const isCorrect = 
-      studentAnswer.toLowerCase().trim() === question.answer.toLowerCase().trim();
+    setIsChecking(true);
+    try {
+      const isCorrect = await checkSemanticSimilarity(
+        question.answer,
+        studentAnswer
+      );
 
-    toast({
-      title: isCorrect ? "Correct!" : "Incorrect",
-      description: isCorrect
-        ? "Great job! Your answer matches perfectly!"
-        : "Try again. Your answer doesn't match the expected answer.",
-      variant: isCorrect ? "default" : "destructive",
-    });
+      toast({
+        title: isCorrect ? "Correct!" : "Incorrect",
+        description: isCorrect
+          ? "Great job! Your answer is semantically correct!"
+          : "Try again. Your answer doesn't match the expected meaning.",
+        variant: isCorrect ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error checking your answer. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChecking(false);
+    }
   };
 
   return (
@@ -88,6 +138,7 @@ const Index = () => {
                     key={question.id}
                     question={question}
                     onAnswerSubmit={(answer) => handleAnswerSubmit(question.id, answer)}
+                    isLoading={isChecking}
                   />
                 ))
               )}
