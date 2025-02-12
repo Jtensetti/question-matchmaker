@@ -18,6 +18,18 @@ serve(async (req) => {
   try {
     const { text1, text2 } = await req.json();
 
+    if (!openAIApiKey) {
+      console.error('OpenAI API key is not set');
+      throw new Error('OpenAI API key is not configured');
+    }
+
+    if (!text1 || !text2) {
+      console.error('Missing required parameters:', { text1, text2 });
+      throw new Error('Both text1 and text2 are required');
+    }
+
+    console.log('Making request to OpenAI with texts:', { text1, text2 });
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -44,15 +56,32 @@ serve(async (req) => {
       }),
     });
 
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('OpenAI API error:', errorData);
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
     const data = await response.json();
+    console.log('OpenAI API response:', data);
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Unexpected OpenAI API response format:', data);
+      throw new Error('Invalid response format from OpenAI');
+    }
+
     const isCorrect = data.choices[0].message.content.toLowerCase().includes('true');
+    console.log('Evaluation result:', { isCorrect });
 
     return new Response(JSON.stringify({ isCorrect }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error in check-semantic-similarity function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: error.stack
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
