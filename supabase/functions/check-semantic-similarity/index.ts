@@ -9,6 +9,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -29,6 +31,9 @@ serve(async (req) => {
     }
 
     console.log('Making request to OpenAI with texts:', { text1, text2 });
+
+    // Add a small delay to help prevent rate limiting
+    await sleep(1000);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -59,6 +64,17 @@ serve(async (req) => {
     if (!response.ok) {
       const errorData = await response.text();
       console.error('OpenAI API error:', errorData);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ 
+          error: "Too many requests. Please wait a moment before trying again.",
+          retryAfter: 5 // Suggest waiting 5 seconds
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 

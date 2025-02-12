@@ -105,19 +105,31 @@ const Index = () => {
 
     setIsChecking(true);
     try {
-      const isCorrect = await checkSemanticSimilarity(
-        question.answer,
-        studentAnswer
-      );
+      const { data, error } = await supabase.functions.invoke('check-semantic-similarity', {
+        body: { text1: question.answer, text2: studentAnswer }
+      });
+
+      if (error) {
+        if (error.status === 429) {
+          toast({
+            title: "Please wait",
+            description: "Too many attempts. Please wait a few seconds before trying again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
-        title: isCorrect ? "Correct!" : "Incorrect",
-        description: isCorrect
+        title: data.isCorrect ? "Correct!" : "Incorrect",
+        description: data.isCorrect
           ? "Great job! Your answer is semantically correct!"
           : "Try again. Your answer doesn't match the expected meaning.",
-        variant: isCorrect ? "default" : "destructive",
+        variant: data.isCorrect ? "default" : "destructive",
       });
     } catch (error) {
+      console.error('Error checking answer:', error);
       toast({
         title: "Error",
         description: "There was an error checking your answer. Please try again.",
