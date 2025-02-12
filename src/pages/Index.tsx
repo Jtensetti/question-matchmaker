@@ -87,35 +87,12 @@ const Index = () => {
 
   const checkSemanticSimilarity = async (text1: string, text2: string) => {
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a teacher evaluating student answers. Respond with "true" if the answers match semantically, and "false" if they don\'t. Only respond with true or false.'
-            },
-            {
-              role: 'user',
-              content: `Question: Compare these answers semantically:
-              Teacher's answer: "${text1}"
-              Student's answer: "${text2}"
-              
-              Are they semantically equivalent? Respond with only true or false.`
-            }
-          ],
-          temperature: 0.3,
-        }),
+      const { data, error } = await supabase.functions.invoke('check-semantic-similarity', {
+        body: { text1, text2 }
       });
 
-      const data = await response.json();
-      const result = data.choices[0].message.content.toLowerCase().includes('true');
-      return result;
+      if (error) throw error;
+      return data.isCorrect;
     } catch (error) {
       console.error('Error checking semantic similarity:', error);
       return false;
