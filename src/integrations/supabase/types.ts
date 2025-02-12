@@ -9,18 +9,21 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      questions: {
+      "public.questions": {
         Row: {
+          answer: string
           created_at: string
           id: string
           text: string
         }
         Insert: {
+          answer?: string
           created_at?: string
           id?: string
           text?: string
         }
         Update: {
+          answer?: string
           created_at?: string
           id?: string
           text?: string
