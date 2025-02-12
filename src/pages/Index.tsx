@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Question } from "@/types/question";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -20,7 +21,7 @@ const Index = () => {
   const fetchQuestions = async () => {
     try {
       const { data, error } = await supabase
-        .from('questions')
+        .from('public.questions')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -50,7 +51,7 @@ const Index = () => {
   const handleCreateQuestion = async (questionText: string, answerText: string) => {
     try {
       const { data, error } = await supabase
-        .from('questions')
+        .from('public.questions')
         .insert([
           { text: questionText, answer: answerText }
         ])
