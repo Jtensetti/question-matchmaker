@@ -102,6 +102,8 @@ const Index = () => {
             description: "Too many attempts. Please wait a few seconds before trying again.",
             variant: "destructive",
           });
+          // Wait for 5 seconds before allowing new submissions
+          await new Promise(resolve => setTimeout(resolve, 5000));
           return;
         }
         throw error;
@@ -122,6 +124,8 @@ const Index = () => {
           description: "Please wait a few seconds before trying again.",
           variant: "destructive",
         });
+        // Wait for 5 seconds before allowing new submissions
+        await new Promise(resolve => setTimeout(resolve, 5000));
         return;
       }
       toast({

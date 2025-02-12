@@ -21,6 +21,7 @@ export const QuestionCard = ({
   onAnswerSubmit,
 }: QuestionCardProps) => {
   const [answer, setAnswer] = useState("");
+  const [isRateLimited, setIsRateLimited] = useState(false);
 
   const handleSubmit = () => {
     if (!answer.trim()) {
@@ -31,6 +32,16 @@ export const QuestionCard = ({
       });
       return;
     }
+
+    if (isRateLimited) {
+      toast({
+        title: "Please wait",
+        description: "Please wait a few seconds before trying again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     onAnswerSubmit?.(answer);
     setAnswer("");
   };
@@ -53,18 +64,20 @@ export const QuestionCard = ({
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || isRateLimited}
             />
             <Button 
               onClick={handleSubmit} 
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || isRateLimited}
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Checking Answer
                 </>
+              ) : isRateLimited ? (
+                "Please wait..."
               ) : (
                 "Submit Answer"
               )}
