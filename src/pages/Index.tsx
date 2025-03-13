@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Question, Test } from "@/types/question";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -9,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CreateTestForm } from "@/components/CreateTestForm";
 import { TestCard } from "@/components/TestCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Loader2, FileQuestion, BookOpen, Lock, Trash2, ShieldCheck, ShieldOff } from "lucide-react";
+import { PlusCircle, Loader2, FileQuestion, BookOpen, Lock, Trash2, ShieldCheck, ShieldOff, UserCog, LogOut } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,28 +22,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TeacherAuth } from "@/components/TeacherAuth";
+import { TeacherManagement } from "@/components/TeacherManagement";
 
 const Index = () => {
   const [isTeacher, setIsTeacher] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [teacherId, setTeacherId] = useState<string | null>(null);
+  const [teacherEmail, setTeacherEmail] = useState<string | null>(null);
+  const [teacherName, setTeacherName] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [allTests, setAllTests] = useState<Test[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateTest, setShowCreateTest] = useState(false);
   const [showTeacherDialog, setShowTeacherDialog] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
-  const [teacherPassword, setTeacherPassword] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [isCheckingPassword, setIsCheckingPassword] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [showDeleteQuestionDialog, setShowDeleteQuestionDialog] = useState(false);
   const [isDeletingQuestion, setIsDeletingQuestion] = useState(false);
-  const [teacherId, setTeacherId] = useState<string | null>(null);
+  const [showTeacherManagement, setShowTeacherManagement] = useState(false);
 
-  const TEACHER_PASSWORD = "teacher123";
+  const { toast } = useToast();
+
   const ADMIN_PASSWORD = "admin456";
 
   useEffect(() => {
@@ -60,7 +63,6 @@ const Index = () => {
         .order('created_at', { ascending: false });
       
       if (!isAdmin && teacherId) {
-        // Regular teachers only see their own questions
         query = query.eq('teacher_id', teacherId);
       }
 
@@ -79,12 +81,10 @@ const Index = () => {
           teacherId: q.teacher_id
         }));
         
-        // For admin, store all questions
         if (isAdmin) {
           setAllQuestions(formattedQuestions);
         }
         
-        // Set the questions to display
         setQuestions(formattedQuestions);
       }
     } catch (error) {
@@ -107,7 +107,6 @@ const Index = () => {
         .order('created_at', { ascending: false });
         
       if (!isAdmin && teacherId) {
-        // Regular teachers only see their own tests
         query = query.eq('teacher_id', teacherId);
       }
 
@@ -167,12 +166,10 @@ const Index = () => {
           })
         );
         
-        // For admin, store all tests
         if (isAdmin) {
           setAllTests(testsWithQuestions);
         }
         
-        // Set the tests to display
         setTests(testsWithQuestions);
       }
     } catch (error) {
@@ -191,6 +188,15 @@ const Index = () => {
     similarityThreshold: number,
     semanticMatching: boolean
   ) => {
+    if (!teacherId) {
+      toast({
+        title: "Error",
+        description: "Du måste vara inloggad som lärare för att skapa frågor.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('questions')
@@ -240,6 +246,15 @@ const Index = () => {
     newTestData: Omit<Test, "id" | "createdAt">,
     selectedQuestionIds: string[]
   ) => {
+    if (!teacherId) {
+      toast({
+        title: "Error",
+        description: "Du måste vara inloggad som lärare för att skapa tester.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       const { data: createdTestData, error: testError } = await supabase
         .from('tests')
@@ -304,7 +319,6 @@ const Index = () => {
       prev.map(test => test.id === updatedTest.id ? updatedTest : test)
     );
     
-    // If admin, also update the allTests array
     if (isAdmin) {
       setAllTests(prev => 
         prev.map(test => test.id === updatedTest.id ? updatedTest : test)
@@ -315,7 +329,6 @@ const Index = () => {
   const handleDeleteTest = (testId: string) => {
     setTests(prev => prev.filter(test => test.id !== testId));
     
-    // If admin, also update the allTests array
     if (isAdmin) {
       setAllTests(prev => prev.filter(test => test.id !== testId));
     }
@@ -357,7 +370,6 @@ const Index = () => {
       
       setQuestions(prev => prev.filter(q => q.id !== questionId));
       
-      // If admin, also update the allQuestions array
       if (isAdmin) {
         setAllQuestions(prev => prev.filter(q => q.id !== questionId));
       }
@@ -393,29 +405,17 @@ const Index = () => {
     setShowAdminDialog(true);
   };
 
-  const checkTeacherPassword = () => {
-    setIsCheckingPassword(true);
-    setTimeout(() => {
-      if (teacherPassword === TEACHER_PASSWORD) {
-        // Generate a pseudo teacher ID (would be from auth in a real app)
-        const generatedTeacherId = Math.random().toString(36).substring(2, 15);
-        setTeacherId(generatedTeacherId);
-        setIsTeacher(true);
-        setShowTeacherDialog(false);
-        toast({
-          title: "Framgång",
-          description: "Lärarläge aktiverat",
-        });
-      } else {
-        toast({
-          title: "Fel lösenord",
-          description: "Lösenordet du angav är felaktigt",
-          variant: "destructive",
-        });
-      }
-      setTeacherPassword("");
-      setIsCheckingPassword(false);
-    }, 500);
+  const handleTeacherAuth = (id: string, email: string, name: string) => {
+    setTeacherId(id);
+    setTeacherEmail(email);
+    setTeacherName(name);
+    setIsTeacher(true);
+    setShowTeacherDialog(false);
+    
+    toast({
+      title: "Inloggad",
+      description: `Välkommen ${name}!`,
+    });
   };
 
   const checkAdminPassword = () => {
@@ -425,7 +425,6 @@ const Index = () => {
         setIsAdmin(true);
         setIsTeacher(true);
         setShowAdminDialog(false);
-        // Admin sees everything, so no teacher ID filter
         setTeacherId(null);
         toast({
           title: "Framgång",
@@ -446,16 +445,31 @@ const Index = () => {
   const toggleAdminMode = () => {
     if (isAdmin) {
       setIsAdmin(false);
-      // Generate a pseudo teacher ID to switch back to regular teacher mode
-      const generatedTeacherId = Math.random().toString(36).substring(2, 15);
-      setTeacherId(generatedTeacherId);
-      toast({
-        title: "Läge ändrat",
-        description: "Administratörsläge inaktiverat. Du är nu i lärarläge.",
-      });
+      if (teacherId) {
+        toast({
+          title: "Läge ändrat",
+          description: "Administratörsläge inaktiverat. Du är nu i lärarläge.",
+        });
+      } else {
+        handleLogout();
+      }
     } else {
       handleAdminModeAccess();
     }
+  };
+
+  const handleLogout = () => {
+    setIsTeacher(false);
+    setIsAdmin(false);
+    setTeacherId(null);
+    setTeacherEmail(null);
+    setTeacherName(null);
+    setShowTeacherManagement(false);
+    
+    toast({
+      title: "Utloggad",
+      description: "Du har loggat ut",
+    });
   };
 
   if (isLoading) {
@@ -464,6 +478,33 @@ const Index = () => {
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="text-lg text-muted-foreground">Laddar...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showTeacherManagement && isAdmin) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container py-8 space-y-8">
+          <header className="text-center space-y-4">
+            <h1 className="text-4xl font-bold">Frågematcharen</h1>
+            <p className="text-lg text-muted-foreground">
+              Administrera lärarkonton
+            </p>
+            <div className="flex justify-center space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowTeacherManagement(false)}
+              >
+                Tillbaka till huvudvyn
+              </Button>
+            </div>
+          </header>
+
+          <main className="max-w-3xl mx-auto">
+            <TeacherManagement />
+          </main>
         </div>
       </div>
     );
@@ -478,7 +519,7 @@ const Index = () => {
             {isAdmin 
               ? "Administrera alla lärares frågor och tester"
               : isTeacher 
-                ? "Skapa och hantera dina frågor och tester" 
+                ? `Skapa och hantera dina frågor och tester${teacherName ? ` (${teacherName})` : ""}`
                 : "Svara på frågor och testa dina kunskaper"}
           </p>
           <div className="flex justify-center space-x-2">
@@ -486,20 +527,31 @@ const Index = () => {
               <>
                 <Button 
                   variant="outline" 
-                  onClick={() => setIsTeacher(false)}
+                  onClick={handleLogout}
                   className="animate-fadeIn"
                 >
-                  Byt till elevläge
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logga ut
                 </Button>
                 {isAdmin ? (
-                  <Button 
-                    variant="outline" 
-                    onClick={toggleAdminMode}
-                    className="animate-fadeIn bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200"
-                  >
-                    <ShieldOff className="h-4 w-4 mr-2" />
-                    Inaktivera admin-läge
-                  </Button>
+                  <>
+                    <Button 
+                      variant="outline" 
+                      onClick={toggleAdminMode}
+                      className="animate-fadeIn bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200"
+                    >
+                      <ShieldOff className="h-4 w-4 mr-2" />
+                      Inaktivera admin-läge
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowTeacherManagement(true)}
+                      className="animate-fadeIn bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200"
+                    >
+                      <UserCog className="h-4 w-4 mr-2" />
+                      Hantera lärare
+                    </Button>
+                  </>
                 ) : (
                   <Button 
                     variant="outline" 
@@ -507,7 +559,7 @@ const Index = () => {
                     className="animate-fadeIn"
                   >
                     <ShieldCheck className="h-4 w-4 mr-2" />
-                    Aktivera admin-läge
+                    Admin-läge
                   </Button>
                 )}
               </>
@@ -526,116 +578,114 @@ const Index = () => {
 
         <main className="max-w-3xl mx-auto space-y-6">
           {isTeacher ? (
-            <>
-              <Tabs defaultValue="tests" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="tests">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Tester
-                  </TabsTrigger>
-                  <TabsTrigger value="questions">
-                    <FileQuestion className="h-4 w-4 mr-2" />
-                    Frågor
-                  </TabsTrigger>
-                </TabsList>
+            <Tabs defaultValue="tests" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="tests">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Tester
+                </TabsTrigger>
+                <TabsTrigger value="questions">
+                  <FileQuestion className="h-4 w-4 mr-2" />
+                  Frågor
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="tests" className="mt-6 space-y-4">
+                {isAdmin && (
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mb-4">
+                    <h3 className="font-medium text-amber-800 flex items-center">
+                      <ShieldCheck className="h-5 w-5 mr-2" />
+                      Administratörsläge aktivt
+                    </h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Du kan nu se och hantera alla lärares tester.
+                    </p>
+                  </div>
+                )}
                 
-                <TabsContent value="tests" className="mt-6 space-y-4">
-                  {isAdmin && (
-                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mb-4">
-                      <h3 className="font-medium text-amber-800 flex items-center">
-                        <ShieldCheck className="h-5 w-5 mr-2" />
-                        Administratörsläge aktivt
-                      </h3>
-                      <p className="text-sm text-amber-700 mt-1">
-                        Du kan nu se och hantera alla lärares tester.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {showCreateTest ? (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Skapa nytt test</h2>
-                      </div>
-                      <CreateTestForm 
-                        onSubmit={handleCreateTest} 
-                        questions={questions}
-                        onCancel={() => setShowCreateTest(false)}
-                        onQuestionCreated={(newQuestion) => {
-                          setQuestions(prev => [newQuestion, ...prev]);
-                        }}
-                      />
-                    </>
-                  ) : (
+                {showCreateTest ? (
+                  <>
                     <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-semibold">Tester</h2>
-                      <Button 
-                        onClick={() => setShowCreateTest(true)}
-                        size="sm"
-                      >
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Skapa test
-                      </Button>
+                      <h2 className="text-xl font-semibold">Skapa nytt test</h2>
                     </div>
-                  )}
-                  
-                  {!showCreateTest && (
-                    <div className="space-y-4">
-                      {tests.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground border rounded-md">
-                          Inga tester skapade ännu. Klicka på knappen ovan för att skapa ditt första test!
-                        </div>
-                      ) : (
-                        tests.map((test) => (
-                          <TestCard 
-                            key={test.id} 
-                            test={test} 
-                            questions={questions}
-                            onUpdate={handleUpdateTest}
-                            onDelete={handleDeleteTest}
-                            isAdmin={isAdmin}
-                          />
-                        ))
-                      )}
-                    </div>
-                  )}
-                </TabsContent>
+                    <CreateTestForm 
+                      onSubmit={handleCreateTest} 
+                      questions={questions}
+                      onCancel={() => setShowCreateTest(false)}
+                      onQuestionCreated={(newQuestion) => {
+                        setQuestions(prev => [newQuestion, ...prev]);
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-semibold">Tester</h2>
+                    <Button 
+                      onClick={() => setShowCreateTest(true)}
+                      size="sm"
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Skapa test
+                    </Button>
+                  </div>
+                )}
                 
-                <TabsContent value="questions" className="mt-6 space-y-4">
-                  {isAdmin && (
-                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mb-4">
-                      <h3 className="font-medium text-amber-800 flex items-center">
-                        <ShieldCheck className="h-5 w-5 mr-2" />
-                        Administratörsläge aktivt
-                      </h3>
-                      <p className="text-sm text-amber-700 mt-1">
-                        Du kan nu se och hantera alla lärares frågor.
-                      </p>
-                    </div>
-                  )}
-                  
-                  <CreateQuestionForm onSubmit={handleCreateQuestion} />
+                {!showCreateTest && (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-semibold">Skapade frågor</h2>
-                    {questions.length === 0 ? (
+                    {tests.length === 0 ? (
                       <div className="text-center py-12 text-muted-foreground border rounded-md">
-                        Inga frågor skapade ännu. Använd formuläret ovan för att skapa din första fråga!
+                        Inga tester skapade ännu. Klicka på knappen ovan för att skapa ditt första test!
                       </div>
                     ) : (
-                      questions.map((question) => (
-                        <QuestionCard
-                          key={question.id}
-                          question={question}
-                          isTeacher={true}
+                      tests.map((test) => (
+                        <TestCard 
+                          key={test.id} 
+                          test={test} 
+                          questions={questions}
+                          onUpdate={handleUpdateTest}
+                          onDelete={handleDeleteTest}
                           isAdmin={isAdmin}
-                          onDeleteClick={() => confirmDeleteQuestion(question.id)}
                         />
                       ))
                     )}
                   </div>
-                </TabsContent>
-              </Tabs>
-            </>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="questions" className="mt-6 space-y-4">
+                {isAdmin && (
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mb-4">
+                    <h3 className="font-medium text-amber-800 flex items-center">
+                      <ShieldCheck className="h-5 w-5 mr-2" />
+                      Administratörsläge aktivt
+                    </h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Du kan nu se och hantera alla lärares frågor.
+                    </p>
+                  </div>
+                )}
+                
+                <CreateQuestionForm onSubmit={handleCreateQuestion} />
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold">Skapade frågor</h2>
+                  {questions.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground border rounded-md">
+                      Inga frågor skapade ännu. Använd formuläret ovan för att skapa din första fråga!
+                    </div>
+                  ) : (
+                    questions.map((question) => (
+                      <QuestionCard
+                        key={question.id}
+                        question={question}
+                        isTeacher={true}
+                        isAdmin={isAdmin}
+                        onDeleteClick={() => confirmDeleteQuestion(question.id)}
+                      />
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           ) : (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Tillgängliga tester</h2>
@@ -690,44 +740,16 @@ const Index = () => {
       </div>
 
       <Dialog open={showTeacherDialog} onOpenChange={setShowTeacherDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Lärarläge</DialogTitle>
+            <DialogTitle>Lärarportal</DialogTitle>
             <DialogDescription>
-              Ange lösenordet för att komma åt lärarläget
+              Logga in eller registrera dig för att hantera frågor och tester
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="Lösenord"
-                value={teacherPassword}
-                onChange={(e) => setTeacherPassword(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    checkTeacherPassword();
-                  }
-                }}
-              />
-            </div>
+          <div className="py-4">
+            <TeacherAuth onSuccess={handleTeacherAuth} />
           </div>
-          <DialogFooter>
-            <Button 
-              onClick={checkTeacherPassword}
-              disabled={isCheckingPassword}
-            >
-              {isCheckingPassword ? (
-                <>
-                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                  Kontrollerar...
-                </>
-              ) : (
-                "Fortsätt"
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
