@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { checkSemanticMatch, isAnswerCorrect } from "@/utils/semanticMatching";
+import { checkSemanticMatch, checkAnswerCorrectAsync } from "@/utils/semanticMatching";
 
 interface QuestionCardProps {
   question: Question;

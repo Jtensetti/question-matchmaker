@@ -69,7 +69,7 @@ const Dashboard = () => {
           if (answersData) {
             // Process the answers and determine if they're correct
             const processedAnswers: StudentAnswer[] = answersData.map((ans: SupabaseStudentAnswer) => {
-              // Calculate if the answer is correct synchronously
+              // Use the synchronous version for type compatibility
               const correct = questionObj ? isAnswerCorrect(
                 ans.answer, 
                 questionObj.answer, 

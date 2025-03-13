@@ -116,7 +116,7 @@ const TestDashboard = () => {
                 const question = questionsArray.find(q => q.id === ans.question_id);
                 
                 if (question) {
-                  // Calculate correctness synchronously now
+                  // Use the synchronous version for type compatibility
                   const correct = isAnswerCorrect(
                     ans.answer, 
                     question.answer, 

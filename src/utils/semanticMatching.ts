@@ -1,4 +1,3 @@
-
 import { compareTwoStrings } from "string-similarity";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -225,8 +224,47 @@ function levenshteinDistance(str1: string, str2: string): number {
   return dp[m][n];
 }
 
-// Helper function to determine if an answer is correct based on threshold
-export const isAnswerCorrect = async (
+// Synchronous version for immediate use in Dashboard and TestDashboard
+export const isAnswerCorrect = (
+  studentAnswer: string, 
+  correctAnswer: string, 
+  similarityThreshold: number = 0.7,
+  semanticMatching: boolean = true
+): boolean => {
+  if (!semanticMatching) {
+    // For non-semantic matching, use simple string comparison
+    return compareTwoStrings(
+      studentAnswer.trim().toLowerCase(),
+      correctAnswer.trim().toLowerCase()
+    ) >= similarityThreshold;
+  }
+  
+  // For basic semantic checks (just for type compatibility)
+  const normalizedStudentAnswer = studentAnswer.trim().toLowerCase();
+  const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
+  
+  // Exact match check
+  if (normalizedStudentAnswer === normalizedCorrectAnswer) {
+    return true;
+  }
+  
+  // Quick substring check
+  if (isKeyPartOfAnswer(normalizedStudentAnswer, normalizedCorrectAnswer)) {
+    return 0.9 >= similarityThreshold;
+  }
+  
+  // Translation check
+  const synonymMatch = checkSynonymsAndTranslations(normalizedStudentAnswer, normalizedCorrectAnswer);
+  if (synonymMatch > 0.8) {
+    return synonymMatch >= similarityThreshold;
+  }
+  
+  // Fall back to string similarity
+  return compareTwoStrings(normalizedStudentAnswer, normalizedCorrectAnswer) >= similarityThreshold;
+};
+
+// Async version for the QuestionCard component which can await the full calculation
+export const checkAnswerCorrectAsync = async (
   studentAnswer: string, 
   correctAnswer: string, 
   similarityThreshold: number = 0.7,
