@@ -35,6 +35,7 @@ export type Database = {
           answer: string
           created_at: string
           id: string
+          semantic_matching: boolean | null
           similarity_threshold: number | null
           text: string
         }
@@ -42,6 +43,7 @@ export type Database = {
           answer: string
           created_at?: string
           id?: string
+          semantic_matching?: boolean | null
           similarity_threshold?: number | null
           text: string
         }
@@ -49,6 +51,7 @@ export type Database = {
           answer?: string
           created_at?: string
           id?: string
+          semantic_matching?: boolean | null
           similarity_threshold?: number | null
           text?: string
         }
