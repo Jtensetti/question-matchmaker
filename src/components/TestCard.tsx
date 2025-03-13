@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Test, Question } from "@/types/question";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Share2, ExternalLink, Copy, ChevronDown, ChevronUp, Edit, Save, X, Trash2 } from "lucide-react";
+import { Share2, ExternalLink, Copy, ChevronDown, ChevronUp, Edit, Save, X, Trash2, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,9 +25,10 @@ interface TestCardProps {
   questions: Question[];
   onUpdate: (updatedTest: Test) => void;
   onDelete?: (testId: string) => void;
+  isAdmin?: boolean;
 }
 
-export const TestCard = ({ test, questions, onUpdate, onDelete }: TestCardProps) => {
+export const TestCard = ({ test, questions, onUpdate, onDelete, isAdmin = false }: TestCardProps) => {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,6 +52,7 @@ export const TestCard = ({ test, questions, onUpdate, onDelete }: TestCardProps)
   };
 
   const questionsCount = test.questions?.length || 0;
+  const isCreatedByOtherTeacher = isAdmin && test.teacherId !== undefined;
 
   const handleSaveEdit = async () => {
     if (!title.trim()) {
@@ -292,10 +293,20 @@ export const TestCard = ({ test, questions, onUpdate, onDelete }: TestCardProps)
         ) : (
           <>
             <CardHeader>
-              <h3 className="text-lg font-semibold">{test.title}</h3>
-              {test.description && (
-                <p className="text-sm text-muted-foreground">{test.description}</p>
-              )}
+              <div className="flex items-start justify-between">
+                <div>
+                  {isCreatedByOtherTeacher && (
+                    <div className="bg-amber-100 px-2 py-1 rounded text-xs text-amber-800 mb-2 inline-block flex items-center">
+                      <ShieldCheck className="h-3 w-3 mr-1" />
+                      Admin-visning
+                    </div>
+                  )}
+                  <h3 className="text-lg font-semibold">{test.title}</h3>
+                  {test.description && (
+                    <p className="text-sm text-muted-foreground">{test.description}</p>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-sm">

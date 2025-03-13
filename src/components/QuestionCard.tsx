@@ -12,10 +12,16 @@ import { checkSemanticMatch, checkAnswerCorrectAsync } from "@/utils/semanticMat
 interface QuestionCardProps {
   question: Question;
   isTeacher?: boolean;
+  isAdmin?: boolean;
   onDeleteClick?: () => void;
 }
 
-export const QuestionCard: React.FC<QuestionCardProps> = ({ question, isTeacher = false, onDeleteClick }) => {
+export const QuestionCard: React.FC<QuestionCardProps> = ({ 
+  question, 
+  isTeacher = false, 
+  isAdmin = false, 
+  onDeleteClick 
+}) => {
   const [userAnswer, setUserAnswer] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -125,8 +131,13 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, isTeacher 
       <CardContent className="pt-6">
         <div className="space-y-4">
           <div>
+            {isAdmin && !isTeacher && (
+              <div className="bg-amber-100 px-2 py-1 rounded text-xs text-amber-800 mb-2 inline-block">
+                Admin-läge
+              </div>
+            )}
             <p className="font-medium">{question.text}</p>
-            {isTeacher && (
+            {(isTeacher || isAdmin) && (
               <p className="text-sm text-muted-foreground mt-1">
                 Svar: {question.answer}
               </p>
@@ -233,7 +244,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, isTeacher 
           )}
         </div>
       </CardContent>
-      {isTeacher && onDeleteClick && (
+      {(isTeacher || isAdmin) && onDeleteClick && (
         <CardFooter className="justify-end">
           <Button
             variant="ghost"

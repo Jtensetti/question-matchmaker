@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Question, Test } from "@/types/question";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -8,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CreateTestForm } from "@/components/CreateTestForm";
 import { TestCard } from "@/components/TestCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Loader2, FileQuestion, BookOpen, Lock, Trash2 } from "lucide-react";
+import { PlusCircle, Loader2, FileQuestion, BookOpen, Lock, Trash2, ShieldCheck, ShieldOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -25,31 +26,45 @@ import {
 
 const Index = () => {
   const [isTeacher, setIsTeacher] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+  const [allTests, setAllTests] = useState<Test[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateTest, setShowCreateTest] = useState(false);
   const [showTeacherDialog, setShowTeacherDialog] = useState(false);
+  const [showAdminDialog, setShowAdminDialog] = useState(false);
   const [teacherPassword, setTeacherPassword] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const [isCheckingPassword, setIsCheckingPassword] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [showDeleteQuestionDialog, setShowDeleteQuestionDialog] = useState(false);
   const [isDeletingQuestion, setIsDeletingQuestion] = useState(false);
+  const [teacherId, setTeacherId] = useState<string | null>(null);
 
   const TEACHER_PASSWORD = "teacher123";
+  const ADMIN_PASSWORD = "admin456";
 
   useEffect(() => {
     fetchQuestions();
     fetchTests();
-  }, []);
+  }, [isAdmin, teacherId]);
 
   const fetchQuestions = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('questions')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      if (!isAdmin && teacherId) {
+        // Regular teachers only see their own questions
+        query = query.eq('teacher_id', teacherId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -60,8 +75,16 @@ const Index = () => {
           answer: q.answer,
           createdAt: new Date(q.created_at),
           similarityThreshold: q.similarity_threshold || 0.7,
-          semanticMatching: q.semantic_matching !== false
+          semanticMatching: q.semantic_matching !== false,
+          teacherId: q.teacher_id
         }));
+        
+        // For admin, store all questions
+        if (isAdmin) {
+          setAllQuestions(formattedQuestions);
+        }
+        
+        // Set the questions to display
         setQuestions(formattedQuestions);
       }
     } catch (error) {
@@ -78,10 +101,17 @@ const Index = () => {
 
   const fetchTests = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tests')
         .select('*')
         .order('created_at', { ascending: false });
+        
+      if (!isAdmin && teacherId) {
+        // Regular teachers only see their own tests
+        query = query.eq('teacher_id', teacherId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -90,7 +120,8 @@ const Index = () => {
           id: t.id,
           title: t.title,
           description: t.description || undefined,
-          createdAt: new Date(t.created_at)
+          createdAt: new Date(t.created_at),
+          teacherId: t.teacher_id
         }));
         
         const testsWithQuestions = await Promise.all(
@@ -106,7 +137,8 @@ const Index = () => {
                   answer,
                   created_at,
                   similarity_threshold,
-                  semantic_matching
+                  semantic_matching,
+                  teacher_id
                 )
               `)
               .eq('test_id', test.id)
@@ -124,7 +156,8 @@ const Index = () => {
                 answer: tq.questions.answer,
                 createdAt: new Date(tq.questions.created_at),
                 similarityThreshold: tq.questions.similarity_threshold || 0.7,
-                semanticMatching: tq.questions.semantic_matching !== false
+                semanticMatching: tq.questions.semantic_matching !== false,
+                teacherId: tq.questions.teacher_id
               }));
               
               return { ...test, questions };
@@ -134,6 +167,12 @@ const Index = () => {
           })
         );
         
+        // For admin, store all tests
+        if (isAdmin) {
+          setAllTests(testsWithQuestions);
+        }
+        
+        // Set the tests to display
         setTests(testsWithQuestions);
       }
     } catch (error) {
@@ -160,7 +199,8 @@ const Index = () => {
             text: questionText, 
             answer: answerText,
             similarity_threshold: similarityThreshold,
-            semantic_matching: semanticMatching
+            semantic_matching: semanticMatching,
+            teacher_id: teacherId
           }
         ])
         .select()
@@ -175,7 +215,8 @@ const Index = () => {
           answer: data.answer,
           createdAt: new Date(data.created_at),
           similarityThreshold: data.similarity_threshold,
-          semanticMatching: data.semantic_matching
+          semanticMatching: data.semantic_matching,
+          teacherId: data.teacher_id
         };
         
         setQuestions(prev => [newQuestion, ...prev]);
@@ -205,7 +246,8 @@ const Index = () => {
         .insert([
           { 
             title: newTestData.title,
-            description: newTestData.description
+            description: newTestData.description,
+            teacher_id: teacherId
           }
         ])
         .select()
@@ -235,7 +277,8 @@ const Index = () => {
           title: createdTestData.title,
           description: createdTestData.description || undefined,
           createdAt: new Date(createdTestData.created_at),
-          questions: selectedQuestions
+          questions: selectedQuestions,
+          teacherId: createdTestData.teacher_id
         };
         
         setTests(prev => [newTest, ...prev]);
@@ -260,10 +303,22 @@ const Index = () => {
     setTests(prev => 
       prev.map(test => test.id === updatedTest.id ? updatedTest : test)
     );
+    
+    // If admin, also update the allTests array
+    if (isAdmin) {
+      setAllTests(prev => 
+        prev.map(test => test.id === updatedTest.id ? updatedTest : test)
+      );
+    }
   };
 
   const handleDeleteTest = (testId: string) => {
     setTests(prev => prev.filter(test => test.id !== testId));
+    
+    // If admin, also update the allTests array
+    if (isAdmin) {
+      setAllTests(prev => prev.filter(test => test.id !== testId));
+    }
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
@@ -302,6 +357,11 @@ const Index = () => {
       
       setQuestions(prev => prev.filter(q => q.id !== questionId));
       
+      // If admin, also update the allQuestions array
+      if (isAdmin) {
+        setAllQuestions(prev => prev.filter(q => q.id !== questionId));
+      }
+      
       toast({
         title: "Framgång",
         description: "Frågan har raderats",
@@ -329,10 +389,17 @@ const Index = () => {
     setShowTeacherDialog(true);
   };
 
+  const handleAdminModeAccess = () => {
+    setShowAdminDialog(true);
+  };
+
   const checkTeacherPassword = () => {
     setIsCheckingPassword(true);
     setTimeout(() => {
       if (teacherPassword === TEACHER_PASSWORD) {
+        // Generate a pseudo teacher ID (would be from auth in a real app)
+        const generatedTeacherId = Math.random().toString(36).substring(2, 15);
+        setTeacherId(generatedTeacherId);
         setIsTeacher(true);
         setShowTeacherDialog(false);
         toast({
@@ -349,6 +416,46 @@ const Index = () => {
       setTeacherPassword("");
       setIsCheckingPassword(false);
     }, 500);
+  };
+
+  const checkAdminPassword = () => {
+    setIsCheckingPassword(true);
+    setTimeout(() => {
+      if (adminPassword === ADMIN_PASSWORD) {
+        setIsAdmin(true);
+        setIsTeacher(true);
+        setShowAdminDialog(false);
+        // Admin sees everything, so no teacher ID filter
+        setTeacherId(null);
+        toast({
+          title: "Framgång",
+          description: "Administratörsläge aktiverat",
+        });
+      } else {
+        toast({
+          title: "Fel lösenord",
+          description: "Lösenordet du angav är felaktigt",
+          variant: "destructive",
+        });
+      }
+      setAdminPassword("");
+      setIsCheckingPassword(false);
+    }, 500);
+  };
+
+  const toggleAdminMode = () => {
+    if (isAdmin) {
+      setIsAdmin(false);
+      // Generate a pseudo teacher ID to switch back to regular teacher mode
+      const generatedTeacherId = Math.random().toString(36).substring(2, 15);
+      setTeacherId(generatedTeacherId);
+      toast({
+        title: "Läge ändrat",
+        description: "Administratörsläge inaktiverat. Du är nu i lärarläge.",
+      });
+    } else {
+      handleAdminModeAccess();
+    }
   };
 
   if (isLoading) {
@@ -368,28 +475,53 @@ const Index = () => {
         <header className="text-center space-y-4">
           <h1 className="text-4xl font-bold">Frågematcharen</h1>
           <p className="text-lg text-muted-foreground">
-            {isTeacher 
-              ? "Skapa och hantera dina frågor och tester" 
-              : "Svara på frågor och testa dina kunskaper"}
+            {isAdmin 
+              ? "Administrera alla lärares frågor och tester"
+              : isTeacher 
+                ? "Skapa och hantera dina frågor och tester" 
+                : "Svara på frågor och testa dina kunskaper"}
           </p>
-          {isTeacher ? (
-            <Button 
-              variant="outline" 
-              onClick={() => setIsTeacher(false)}
-              className="animate-fadeIn"
-            >
-              Byt till elevläge
-            </Button>
-          ) : (
-            <Button 
-              variant="outline" 
-              onClick={handleTeacherModeAccess}
-              className="animate-fadeIn"
-            >
-              <Lock className="h-4 w-4 mr-2" />
-              Lärarläge
-            </Button>
-          )}
+          <div className="flex justify-center space-x-2">
+            {isTeacher ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsTeacher(false)}
+                  className="animate-fadeIn"
+                >
+                  Byt till elevläge
+                </Button>
+                {isAdmin ? (
+                  <Button 
+                    variant="outline" 
+                    onClick={toggleAdminMode}
+                    className="animate-fadeIn bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200"
+                  >
+                    <ShieldOff className="h-4 w-4 mr-2" />
+                    Inaktivera admin-läge
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    onClick={handleAdminModeAccess}
+                    className="animate-fadeIn"
+                  >
+                    <ShieldCheck className="h-4 w-4 mr-2" />
+                    Aktivera admin-läge
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button 
+                variant="outline" 
+                onClick={handleTeacherModeAccess}
+                className="animate-fadeIn"
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                Lärarläge
+              </Button>
+            )}
+          </div>
         </header>
 
         <main className="max-w-3xl mx-auto space-y-6">
@@ -408,6 +540,18 @@ const Index = () => {
                 </TabsList>
                 
                 <TabsContent value="tests" className="mt-6 space-y-4">
+                  {isAdmin && (
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mb-4">
+                      <h3 className="font-medium text-amber-800 flex items-center">
+                        <ShieldCheck className="h-5 w-5 mr-2" />
+                        Administratörsläge aktivt
+                      </h3>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Du kan nu se och hantera alla lärares tester.
+                      </p>
+                    </div>
+                  )}
+                  
                   {showCreateTest ? (
                     <>
                       <div className="flex justify-between items-center">
@@ -449,6 +593,7 @@ const Index = () => {
                             questions={questions}
                             onUpdate={handleUpdateTest}
                             onDelete={handleDeleteTest}
+                            isAdmin={isAdmin}
                           />
                         ))
                       )}
@@ -457,6 +602,18 @@ const Index = () => {
                 </TabsContent>
                 
                 <TabsContent value="questions" className="mt-6 space-y-4">
+                  {isAdmin && (
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mb-4">
+                      <h3 className="font-medium text-amber-800 flex items-center">
+                        <ShieldCheck className="h-5 w-5 mr-2" />
+                        Administratörsläge aktivt
+                      </h3>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Du kan nu se och hantera alla lärares frågor.
+                      </p>
+                    </div>
+                  )}
+                  
                   <CreateQuestionForm onSubmit={handleCreateQuestion} />
                   <div className="space-y-4">
                     <h2 className="text-xl font-semibold">Skapade frågor</h2>
@@ -470,6 +627,7 @@ const Index = () => {
                           key={question.id}
                           question={question}
                           isTeacher={true}
+                          isAdmin={isAdmin}
                           onDeleteClick={() => confirmDeleteQuestion(question.id)}
                         />
                       ))
@@ -559,6 +717,49 @@ const Index = () => {
             <Button 
               onClick={checkTeacherPassword}
               disabled={isCheckingPassword}
+            >
+              {isCheckingPassword ? (
+                <>
+                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Kontrollerar...
+                </>
+              ) : (
+                "Fortsätt"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Administratörsläge</DialogTitle>
+            <DialogDescription>
+              Ange administratörslösenordet för att få tillgång till alla lärares frågor och tester
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Input
+                type="password"
+                placeholder="Administratörslösenord"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    checkAdminPassword();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={checkAdminPassword}
+              disabled={isCheckingPassword}
+              className="bg-amber-600 hover:bg-amber-700"
             >
               {isCheckingPassword ? (
                 <>

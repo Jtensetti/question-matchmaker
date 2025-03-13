@@ -4,18 +4,19 @@ export interface Question {
   text: string;
   answer: string;
   createdAt: Date;
-  similarityThreshold?: number; // Default will be 0.7 (70%)
-  semanticMatching?: boolean; // Whether to use semantic matching instead of string similarity
+  similarityThreshold?: number;
+  semanticMatching?: boolean;
+  teacherId?: string;
 }
 
 export interface StudentAnswer {
   id: string;
   questionId: string;
-  testId?: string;
   studentName: string;
   answer: string;
   submittedAt: Date;
-  isCorrect?: boolean;
+  isCorrect: boolean;
+  testId?: string;
 }
 
 export interface Test {
@@ -24,12 +25,5 @@ export interface Test {
   description?: string;
   createdAt: Date;
   questions?: Question[];
-}
-
-export interface TestQuestion {
-  id: string;
-  testId: string;
-  questionId: string;
-  position: number;
-  question?: Question;
+  teacherId?: string;
 }
