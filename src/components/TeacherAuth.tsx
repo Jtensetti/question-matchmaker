@@ -55,8 +55,9 @@ export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
         throw new Error("Detta konto är inaktiverat");
       }
 
-      // In a real app, we would use supabase auth for password handling
-      // For this demo, we'll use a simple check against the teacher password
+      // In a real app, we would implement proper password hashing and verification
+      // For now, we'll use a simple check for demonstration purposes
+      // This should be replaced with a secure authentication system
       if (loginPassword !== "teacher123") {
         throw new Error("Ogiltigt lösenord");
       }
@@ -103,16 +104,15 @@ export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
         throw new Error("En lärare med denna e-post finns redan");
       }
 
-      // In a real app, we would use supabase auth for password handling
-      // For this demo, we'll just insert the teacher record
+      // In a real app, we would use proper password hashing before storing
+      // For now, we'll just insert the teacher record without storing the password
+      // This should be replaced with a secure authentication system
       const { data: newTeacher, error: insertError } = await supabase
         .from("teachers")
         .insert([
           { 
             email: registerEmail.toLowerCase().trim(), 
             full_name: registerFullName.trim(),
-            // In a real app, we would not store passwords in plain text
-            // This is just for demonstration
           }
         ])
         .select()
@@ -240,7 +240,7 @@ export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
         </Tabs>
       </CardContent>
       <CardFooter className="flex justify-center text-sm text-muted-foreground">
-        <p>Detta är en demo. Lösenord: "teacher123"</p>
+        <p>För testsyfte är standardlösenordet "teacher123"</p>
       </CardFooter>
     </Card>
   );
