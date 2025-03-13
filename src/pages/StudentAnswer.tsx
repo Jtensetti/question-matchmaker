@@ -117,8 +117,7 @@ const StudentAnswer = () => {
           { 
             question_id: question.id, 
             student_name: studentName,
-            answer: answer,
-            submitted_at: new Date().toISOString()
+            answer: answer
           }
         ]);
 

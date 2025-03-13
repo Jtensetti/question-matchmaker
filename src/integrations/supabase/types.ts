@@ -57,6 +57,38 @@ export type Database = {
         }
         Relationships: []
       }
+      student_answers: {
+        Row: {
+          answer: string
+          id: string
+          question_id: string
+          student_name: string
+          submitted_at: string
+        }
+        Insert: {
+          answer: string
+          id?: string
+          question_id: string
+          student_name: string
+          submitted_at?: string
+        }
+        Update: {
+          answer?: string
+          id?: string
+          question_id?: string
+          student_name?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

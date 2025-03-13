@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle, ArrowLeft, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Question } from "@/types/question";
+import { Question, StudentAnswer } from "@/types/question";
 import { 
   Table, 
   TableHeader, 
@@ -17,13 +17,12 @@ import {
 } from "@/components/ui/table";
 import { isAnswerCorrect } from "@/utils/semanticMatching";
 
-interface StudentAnswer {
+interface SupabaseStudentAnswer {
   id: string;
   question_id: string;
   student_name: string;
   answer: string;
   submitted_at: string;
-  is_correct?: boolean;
 }
 
 const Dashboard = () => {
@@ -69,17 +68,21 @@ const Dashboard = () => {
 
           if (answersData) {
             // Process the answers and determine if they're correct
-            const processedAnswers = answersData.map((ans) => {
-              const isCorrect = isAnswerCorrect(
+            const processedAnswers: StudentAnswer[] = answersData.map((ans: SupabaseStudentAnswer) => {
+              const isCorrect = questionObj ? isAnswerCorrect(
                 ans.answer, 
                 questionObj.answer, 
                 questionObj.similarityThreshold || 0.7,
                 questionObj.semanticMatching !== false
-              );
+              ) : false;
               
               return {
-                ...ans,
-                is_correct: isCorrect
+                id: ans.id,
+                questionId: ans.question_id,
+                studentName: ans.student_name,
+                answer: ans.answer,
+                submittedAt: new Date(ans.submitted_at),
+                isCorrect
               };
             });
             
@@ -114,10 +117,10 @@ const Dashboard = () => {
     // Create CSV content
     const headers = ['Student Name', 'Answer', 'Submitted At', 'Correct?'];
     const rows = answers.map(ans => [
-      ans.student_name,
+      ans.studentName,
       ans.answer,
-      new Date(ans.submitted_at).toLocaleString(),
-      ans.is_correct ? 'Yes' : 'No'
+      new Date(ans.submittedAt).toLocaleString(),
+      ans.isCorrect ? 'Yes' : 'No'
     ]);
     
     // Combine headers and rows
@@ -174,7 +177,7 @@ const Dashboard = () => {
 
   // Calculate statistics
   const totalResponses = answers.length;
-  const correctResponses = answers.filter(a => a.is_correct).length;
+  const correctResponses = answers.filter(a => a.isCorrect).length;
   const percentCorrect = totalResponses ? Math.round((correctResponses / totalResponses) * 100) : 0;
 
   return (
@@ -245,18 +248,18 @@ const Dashboard = () => {
                   <TableBody>
                     {answers.map((ans) => (
                       <TableRow key={ans.id}>
-                        <TableCell className="font-medium">{ans.student_name}</TableCell>
+                        <TableCell className="font-medium">{ans.studentName}</TableCell>
                         <TableCell>{ans.answer}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {new Date(ans.submitted_at).toLocaleString()}
+                          {new Date(ans.submittedAt).toLocaleString()}
                         </TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            ans.is_correct 
+                            ans.isCorrect 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-red-100 text-red-800'
                           }`}>
-                            {ans.is_correct ? 'Yes' : 'No'}
+                            {ans.isCorrect ? 'Yes' : 'No'}
                           </span>
                         </TableCell>
                       </TableRow>
