@@ -30,6 +30,30 @@ export type Database = {
         }
         Relationships: []
       }
+      questions: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          similarity_threshold: number | null
+          text: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          similarity_threshold?: number | null
+          text: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          similarity_threshold?: number | null
+          text?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

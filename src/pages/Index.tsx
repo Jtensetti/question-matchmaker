@@ -20,7 +20,7 @@ const Index = () => {
   const fetchQuestions = async () => {
     try {
       const { data, error } = await supabase
-        .from('public.questions')
+        .from('questions')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -32,7 +32,8 @@ const Index = () => {
           text: q.text,
           answer: q.answer,
           createdAt: new Date(q.created_at),
-          similarityThreshold: q.similarity_threshold || 0.7
+          similarityThreshold: q.similarity_threshold || 0.7,
+          semanticMatching: q.semantic_matching !== false // Default to true if not specified
         }));
         setQuestions(formattedQuestions);
       }
@@ -48,15 +49,21 @@ const Index = () => {
     }
   };
 
-  const handleCreateQuestion = async (questionText: string, answerText: string, similarityThreshold: number) => {
+  const handleCreateQuestion = async (
+    questionText: string, 
+    answerText: string, 
+    similarityThreshold: number,
+    semanticMatching: boolean
+  ) => {
     try {
       const { data, error } = await supabase
-        .from('public.questions')
+        .from('questions')
         .insert([
           { 
             text: questionText, 
             answer: answerText,
-            similarity_threshold: similarityThreshold
+            similarity_threshold: similarityThreshold,
+            semantic_matching: semanticMatching
           }
         ])
         .select()
@@ -70,7 +77,8 @@ const Index = () => {
           text: data.text,
           answer: data.answer,
           createdAt: new Date(data.created_at),
-          similarityThreshold: data.similarity_threshold
+          similarityThreshold: data.similarity_threshold,
+          semanticMatching: data.semantic_matching
         };
         
         setQuestions(prev => [newQuestion, ...prev]);

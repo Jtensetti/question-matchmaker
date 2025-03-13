@@ -5,6 +5,7 @@ export interface Question {
   answer: string;
   createdAt: Date;
   similarityThreshold?: number; // Default will be 0.7 (70%)
+  semanticMatching?: boolean; // Whether to use semantic matching instead of string similarity
 }
 
 export interface StudentAnswer {

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { compareTwoStrings } from "string-similarity";
+import { isAnswerCorrect, checkSemanticMatch } from "@/utils/semanticMatching";
 
 interface QuestionCardProps {
   question: Question;
@@ -27,6 +28,7 @@ export const QuestionCard = ({
 
   // Use the provided threshold or default to 0.7 (70%)
   const similarityThreshold = question.similarityThreshold ?? 0.7;
+  const useSemanticMatching = question.semanticMatching ?? true; // Default to using semantic matching
 
   const handleSubmit = () => {
     if (!answer.trim()) {
@@ -53,14 +55,24 @@ export const QuestionCard = ({
       
       // Simulate a small delay to make the checking feel natural
       setTimeout(() => {
-        // Calculate similarity between student answer and correct answer
-        const similarity = compareTwoStrings(
-          answer.trim().toLowerCase(),
-          question.answer.trim().toLowerCase()
-        );
+        let similarity: number;
+        let isCorrect: boolean;
         
-        // Consider it correct if similarity is above the threshold
-        const isCorrect = similarity > similarityThreshold;
+        if (useSemanticMatching) {
+          // Use our semantic matching approach
+          similarity = checkSemanticMatch(
+            answer.trim(), 
+            question.answer.trim()
+          );
+          isCorrect = similarity >= similarityThreshold;
+        } else {
+          // Use the original string similarity approach
+          similarity = compareTwoStrings(
+            answer.trim().toLowerCase(),
+            question.answer.trim().toLowerCase()
+          );
+          isCorrect = similarity >= similarityThreshold;
+        }
         
         toast({
           title: isCorrect ? "Correct!" : "Incorrect",
@@ -99,6 +111,9 @@ export const QuestionCard = ({
                   question.similarityThreshold < 0.9 ? "Strict" : "Very strict"})
               </div>
             )}
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium">Matching:</span> {useSemanticMatching ? "Semantic (meaning-based)" : "String similarity (spelling-based)"}
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
