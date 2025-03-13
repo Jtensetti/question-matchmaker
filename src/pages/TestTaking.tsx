@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, AlertTriangle, CheckCircle } from "lucide-react";
+import { Loader2, AlertTriangle, AlignLeft, AlignRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Test, Question } from "@/types/question";
 import { Progress } from "@/components/ui/progress";
@@ -24,8 +23,8 @@ const TestTaking = () => {
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   const [captchaQuestion, setCaptchaQuestion] = useState("");
   const [answers, setAnswers] = useState<{questionId: string, answer: string}[]>([]);
+  const [ratingValue, setRatingValue] = useState<number | null>(null);
   
-  // Simple captcha generation
   const generateCaptcha = () => {
     const num1 = Math.floor(Math.random() * 10);
     const num2 = Math.floor(Math.random() * 10);
@@ -40,7 +39,6 @@ const TestTaking = () => {
       if (!testId) return;
       
       try {
-        // Fetch test data
         const { data: testData, error: testError } = await supabase
           .from('tests')
           .select('*')
@@ -59,7 +57,6 @@ const TestTaking = () => {
 
           setTest(test);
           
-          // Fetch questions for this test
           const { data: testQuestionsData, error: testQuestionsError } = await supabase
             .from('test_questions')
             .select(`
@@ -73,7 +70,10 @@ const TestTaking = () => {
                 answer,
                 created_at,
                 similarity_threshold,
-                semantic_matching
+                semantic_matching,
+                question_type,
+                rating_min,
+                rating_max
               )
             `)
             .eq('test_id', testId)
@@ -88,7 +88,11 @@ const TestTaking = () => {
               answer: tq.questions.answer,
               createdAt: new Date(tq.questions.created_at),
               similarityThreshold: tq.questions.similarity_threshold || 0.7,
-              semanticMatching: tq.questions.semantic_matching !== false
+              semanticMatching: tq.questions.semantic_matching !== false,
+              questionType: tq.questions.question_type,
+              ratingMin: tq.questions.rating_min,
+              ratingMax: tq.questions.rating_max,
+              ratingCorrect: tq.questions.answer ? parseInt(tq.questions.answer) : undefined
             }));
             
             setTestQuestions(questions);
@@ -115,6 +119,10 @@ const TestTaking = () => {
 
     fetchTest();
   }, [testId, navigate]);
+
+  useEffect(() => {
+    setRatingValue(null);
+  }, [currentQuestionIndex]);
 
   const handleNameSubmit = () => {
     if (!studentName.trim()) {
@@ -143,6 +151,36 @@ const TestTaking = () => {
   const handleAnswerSubmit = async () => {
     if (!test || !testQuestions[currentQuestionIndex]) return;
     
+    const currentQuestion = testQuestions[currentQuestionIndex];
+    
+    if (currentQuestion.questionType === "rating") {
+      if (ratingValue === null) {
+        toast({
+          title: "Answer required",
+          description: "Please select a value on the scale.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setSubmitting(true);
+      
+      try {
+        setAnswers(prev => [...prev, {
+          questionId: currentQuestion.id,
+          answer: ratingValue.toString()
+        }]);
+        
+        moveToNextOrComplete(ratingValue.toString());
+      } catch (error) {
+        handleSubmissionError(error);
+      } finally {
+        setSubmitting(false);
+      }
+      
+      return;
+    }
+    
     if (!answer.trim()) {
       toast({
         title: "Answer required",
@@ -155,56 +193,122 @@ const TestTaking = () => {
     setSubmitting(true);
     
     try {
-      // Store answer for final submission
       setAnswers(prev => [...prev, {
-        questionId: testQuestions[currentQuestionIndex].id,
+        questionId: currentQuestion.id,
         answer: answer.trim()
       }]);
       
-      // Move to next question
-      if (currentQuestionIndex < testQuestions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-        setAnswer("");
-      } else {
-        // Submit all answers to Supabase
-        const allAnswers = [...answers, {
-          questionId: testQuestions[currentQuestionIndex].id,
-          answer: answer.trim()
-        }];
-        
-        for (const ans of allAnswers) {
-          const { error } = await supabase
-            .from('student_answers')
-            .insert([
-              { 
-                question_id: ans.questionId, 
-                test_id: test.id,
-                student_name: studentName,
-                answer: ans.answer
-              }
-            ]);
-
-          if (error) throw error;
-        }
-        
-        toast({
-          title: "Test completed!",
-          description: "All your answers have been submitted successfully.",
-        });
-        
-        // Redirect to thank you page
-        navigate(`/test-thank-you/${test.id}`);
-      }
+      moveToNextOrComplete(answer.trim());
     } catch (error) {
-      console.error('Error submitting answer:', error);
-      toast({
-        title: "Error",
-        description: "Failed to submit your answer. Please try again.",
-        variant: "destructive",
-      });
+      handleSubmissionError(error);
     } finally {
       setSubmitting(false);
     }
+  };
+  
+  const moveToNextOrComplete = (currentAnswer: string) => {
+    if (currentQuestionIndex < testQuestions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setAnswer("");
+      setRatingValue(null);
+    } else {
+      submitAllAnswers(currentAnswer);
+    }
+  };
+  
+  const submitAllAnswers = async (finalAnswer: string) => {
+    if (!test) return;
+    
+    const allAnswers = [...answers, {
+      questionId: testQuestions[currentQuestionIndex].id,
+      answer: finalAnswer
+    }];
+    
+    try {
+      for (const ans of allAnswers) {
+        const { error } = await supabase
+          .from('student_answers')
+          .insert([
+            { 
+              question_id: ans.questionId, 
+              test_id: test.id,
+              student_name: studentName,
+              answer: ans.answer
+            }
+          ]);
+
+        if (error) throw error;
+      }
+      
+      toast({
+        title: "Test completed!",
+        description: "All your answers have been submitted successfully.",
+      });
+      
+      navigate(`/test-thank-you/${test.id}`);
+    } catch (error) {
+      handleSubmissionError(error);
+    }
+  };
+  
+  const handleSubmissionError = (error: any) => {
+    console.error('Error submitting answer:', error);
+    toast({
+      title: "Error",
+      description: "Failed to submit your answer. Please try again.",
+      variant: "destructive",
+    });
+  };
+  
+  const renderRatingScale = () => {
+    const currentQuestion = testQuestions[currentQuestionIndex];
+    if (!currentQuestion?.ratingMin || !currentQuestion?.ratingMax) return null;
+    
+    const min = currentQuestion.ratingMin;
+    const max = currentQuestion.ratingMax;
+    
+    return (
+      <div className="space-y-4 mt-4">
+        <div className="flex justify-between">
+          <div className="flex items-center">
+            <AlignLeft className="h-5 w-5 mr-1" />
+            <span>{min}</span>
+          </div>
+          <div className="flex items-center">
+            <span>{max}</span>
+            <AlignRight className="h-5 w-5 ml-1" />
+          </div>
+        </div>
+        
+        <div 
+          className="relative h-10 bg-muted rounded-md cursor-pointer"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = x / rect.width;
+            const newValue = Math.round(min + percentage * (max - min));
+            setRatingValue(Math.max(min, Math.min(max, newValue)));
+          }}
+        >
+          <div className="absolute top-4 left-0 right-0 h-2 bg-gray-300 rounded-full"></div>
+          
+          {ratingValue !== null && (
+            <div 
+              className="absolute top-2 h-6 w-6 bg-primary rounded-full shadow transform -translate-x-1/2"
+              style={{ 
+                left: `${((ratingValue - min) / (max - min)) * 100}%` 
+              }}
+            ></div>
+          )}
+        </div>
+        
+        {ratingValue !== null && (
+          <div className="text-center text-sm">
+            Your selection: <span className="font-semibold">{ratingValue}</span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -320,13 +424,18 @@ const TestTaking = () => {
                 <label htmlFor="answer" className="block text-sm font-medium mb-1">
                   Your Answer
                 </label>
-                <Input
-                  id="answer"
-                  placeholder="Type your answer here"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  disabled={submitting}
-                />
+                
+                {currentQuestion.questionType === "rating" ? (
+                  renderRatingScale()
+                ) : (
+                  <Input
+                    id="answer"
+                    placeholder="Type your answer here"
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    disabled={submitting}
+                  />
+                )}
               </div>
               
               <Button 
@@ -359,3 +468,4 @@ const TestTaking = () => {
 };
 
 export default TestTaking;
+

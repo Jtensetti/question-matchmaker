@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   MessageSquare, 
-  ListChecks, 
-  Star, 
+  ListChecks,
   Check, 
   Grid2X2, 
-  FileText
+  FileText,
+  AlignLeft,
+  AlignRight
 } from "lucide-react";
 
 interface CreateQuestionFormProps {
@@ -26,7 +26,10 @@ interface CreateQuestionFormProps {
     questionType: string,
     options?: string[],
     gridRows?: string[],
-    gridColumns?: string[]
+    gridColumns?: string[],
+    ratingMin?: number,
+    ratingMax?: number,
+    ratingCorrect?: number
   ) => void;
 }
 
@@ -44,11 +47,16 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
   // For grid matching
   const [gridRows, setGridRows] = useState<string[]>(["", ""]);
   const [gridColumns, setGridColumns] = useState<string[]>(["", ""]);
+  
+  // For rating scale
+  const [ratingMin, setRatingMin] = useState(0);
+  const [ratingMax, setRatingMax] = useState(10);
+  const [ratingCorrect, setRatingCorrect] = useState(5);
 
   const questionTypes = [
     { id: "open_ended", label: "Öppen fråga", icon: MessageSquare, allowSemantic: true },
     { id: "multiple_choice", label: "Flervalsfråga", icon: ListChecks, allowSemantic: false },
-    { id: "rating", label: "Betygsättning", icon: Star, allowSemantic: false },
+    { id: "rating", label: "Skattningsskala", icon: AlignLeft, allowSemantic: false },
     { id: "checkboxes", label: "Kryssrutor", icon: Check, allowSemantic: false },
     { id: "grid_matching", label: "Rutnätsmatchning", icon: Grid2X2, allowSemantic: false },
     { id: "fill_in_blank", label: "Fyll i luckor", icon: FileText, allowSemantic: true }
@@ -131,6 +139,26 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
       });
       return;
     }
+    
+    if (questionType === "rating") {
+      if (ratingMin >= ratingMax) {
+        toast({
+          title: "Fel",
+          description: "Lägsta värdet måste vara mindre än högsta värdet",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (ratingCorrect < ratingMin || ratingCorrect > ratingMax) {
+        toast({
+          title: "Fel",
+          description: "Korrekta värdet måste vara mellan lägsta och högsta värdet",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     const filteredOptions = (questionType === "multiple_choice" || questionType === "checkboxes") 
       ? options.filter(opt => opt.trim())
@@ -147,16 +175,24 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
     // Only use semantic matching for open-ended and fill-in-blank questions
     const useSemanticMatching = 
       (questionType === "open_ended" || questionType === "fill_in_blank") && semanticMatching;
+    
+    // Create the answer string for rating questions
+    const finalAnswer = questionType === "rating" 
+      ? ratingCorrect.toString()
+      : answer;
 
     onSubmit(
       question, 
-      answer, 
+      finalAnswer, 
       similarityThreshold, 
       useSemanticMatching,
       questionType,
       filteredOptions,
       filteredGridRows,
-      filteredGridColumns
+      filteredGridColumns,
+      questionType === "rating" ? ratingMin : undefined,
+      questionType === "rating" ? ratingMax : undefined,
+      questionType === "rating" ? ratingCorrect : undefined
     );
     
     // Reset form
@@ -167,6 +203,9 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
     setOptions(["", "", ""]);
     setGridRows(["", ""]);
     setGridColumns(["", ""]);
+    setRatingMin(0);
+    setRatingMax(10);
+    setRatingCorrect(5);
   };
 
   const handleOptionChange = (index: number, value: string) => {
@@ -417,23 +456,76 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
           )}
 
           {questionType === "rating" && (
-            <div className="space-y-3">
-              <label htmlFor="rating-max" className="text-sm font-medium">
-                Maximal betyg
-              </label>
-              <Input
-                id="rating-max"
-                type="number"
-                min="2"
-                max="10"
-                value={answer || "5"}
-                onChange={(e) => setAnswer(e.target.value)}
-                className="w-full"
-              />
-              <div className="flex items-center justify-center space-x-1 py-2">
-                {[...Array(parseInt(answer || "5"))].map((_, i) => (
-                  <Star key={i} className="h-6 w-6 text-amber-400 fill-amber-400" />
-                ))}
+            <div className="space-y-4">
+              <div className="flex flex-col space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="rating-min" className="text-sm font-medium">
+                    Lägsta värde
+                  </label>
+                  <Input
+                    id="rating-min"
+                    type="number"
+                    value={ratingMin}
+                    onChange={(e) => setRatingMin(parseInt(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="rating-max" className="text-sm font-medium">
+                    Högsta värde
+                  </label>
+                  <Input
+                    id="rating-max"
+                    type="number"
+                    value={ratingMax}
+                    onChange={(e) => setRatingMax(parseInt(e.target.value) || 10)}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="rating-correct" className="text-sm font-medium">
+                    Korrekt värde
+                  </label>
+                  <Input
+                    id="rating-correct"
+                    type="number"
+                    value={ratingCorrect}
+                    onChange={(e) => setRatingCorrect(parseInt(e.target.value) || 5)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              
+              <div className="bg-muted p-4 rounded-md">
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <div className="flex items-center">
+                      <AlignLeft className="h-5 w-5 mr-1" />
+                      <span>{ratingMin}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span>{ratingMax}</span>
+                      <AlignRight className="h-5 w-5 ml-1" />
+                    </div>
+                  </div>
+                  
+                  <div className="relative pt-4">
+                    <div className="h-2 bg-gray-300 rounded-full"></div>
+                    <div 
+                      className="absolute h-4 w-4 bg-primary rounded-full -mt-1 transform -translate-x-1/2"
+                      style={{ 
+                        left: `${(ratingCorrect - ratingMin) / (ratingMax - ratingMin) * 100}%`,
+                        top: '0.5rem'
+                      }}
+                    ></div>
+                  </div>
+                  
+                  <div className="text-center text-sm text-muted-foreground">
+                    Korrekta värdet: {ratingCorrect}
+                  </div>
+                </div>
               </div>
             </div>
           )}

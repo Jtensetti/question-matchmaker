@@ -5,7 +5,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, AlignLeft, AlignRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Question } from "@/types/question";
 
@@ -19,6 +19,7 @@ const StudentAnswer = () => {
   const [studentName, setStudentName] = useState("");
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   const [captchaQuestion, setCaptchaQuestion] = useState("");
+  const [ratingValue, setRatingValue] = useState<number | null>(null);
   
   // Simple captcha generation
   const generateCaptcha = () => {
@@ -50,7 +51,11 @@ const StudentAnswer = () => {
             answer: data.answer,
             createdAt: new Date(data.created_at),
             similarityThreshold: data.similarity_threshold || 0.7,
-            semanticMatching: data.semantic_matching !== false
+            semanticMatching: data.semantic_matching !== false,
+            questionType: data.question_type,
+            ratingMin: data.rating_min,
+            ratingMax: data.rating_max,
+            ratingCorrect: parseInt(data.answer)
           });
         } else {
           toast({
@@ -87,7 +92,18 @@ const StudentAnswer = () => {
       return;
     }
     
-    if (!answer.trim()) {
+    // For rating question type
+    if (question.questionType === "rating") {
+      if (ratingValue === null) {
+        toast({
+          title: "Answer required",
+          description: "Please select a value on the scale.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (!answer.trim()) {
+      // For other question types
       toast({
         title: "Answer required",
         description: "Please provide an answer to the question.",
@@ -117,7 +133,9 @@ const StudentAnswer = () => {
           { 
             question_id: question.id, 
             student_name: studentName,
-            answer: answer
+            answer: question.questionType === "rating" 
+              ? ratingValue!.toString() 
+              : answer
           }
         ]);
 
@@ -141,6 +159,58 @@ const StudentAnswer = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+  
+  const renderRatingScale = () => {
+    if (!question?.ratingMin || !question?.ratingMax) return null;
+    
+    const min = question.ratingMin;
+    const max = question.ratingMax;
+    
+    return (
+      <div className="space-y-4 mt-4">
+        <div className="flex justify-between">
+          <div className="flex items-center">
+            <AlignLeft className="h-5 w-5 mr-1" />
+            <span>{min}</span>
+          </div>
+          <div className="flex items-center">
+            <span>{max}</span>
+            <AlignRight className="h-5 w-5 ml-1" />
+          </div>
+        </div>
+        
+        <div 
+          className="relative h-10 bg-muted rounded-md cursor-pointer"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = x / rect.width;
+            const newValue = Math.round(min + percentage * (max - min));
+            setRatingValue(Math.max(min, Math.min(max, newValue)));
+          }}
+        >
+          {/* Track */}
+          <div className="absolute top-4 left-0 right-0 h-2 bg-gray-300 rounded-full"></div>
+          
+          {/* User's selected value handle */}
+          {ratingValue !== null && (
+            <div 
+              className="absolute top-2 h-6 w-6 bg-primary rounded-full shadow transform -translate-x-1/2"
+              style={{ 
+                left: `${((ratingValue - min) / (max - min)) * 100}%` 
+              }}
+            ></div>
+          )}
+        </div>
+        
+        {ratingValue !== null && (
+          <div className="text-center text-sm">
+            Your selection: <span className="font-semibold">{ratingValue}</span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -205,13 +275,18 @@ const StudentAnswer = () => {
                 <label htmlFor="answer" className="block text-sm font-medium mb-1">
                   Your Answer
                 </label>
-                <Input
-                  id="answer"
-                  placeholder="Type your answer here"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  disabled={submitting}
-                />
+                
+                {question.questionType === "rating" ? (
+                  renderRatingScale()
+                ) : (
+                  <Input
+                    id="answer"
+                    placeholder="Type your answer here"
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    disabled={submitting}
+                  />
+                )}
               </div>
               
               <div className="p-4 bg-muted rounded-md">

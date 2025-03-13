@@ -11,6 +11,9 @@ export interface Question {
   options?: string[];
   gridRows?: string[];
   gridColumns?: string[];
+  ratingMin?: number;
+  ratingMax?: number;
+  ratingCorrect?: number;
 }
 
 export interface StudentAnswer {
