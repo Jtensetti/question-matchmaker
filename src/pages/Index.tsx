@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Question, Test } from "@/types/question";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -10,6 +9,7 @@ import { CreateTestForm } from "@/components/CreateTestForm";
 import { TestCard } from "@/components/TestCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, Loader2, FileQuestion, BookOpen } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 const Index = () => {
   const [isTeacher, setIsTeacher] = useState(true);
@@ -40,7 +40,7 @@ const Index = () => {
           answer: q.answer,
           createdAt: new Date(q.created_at),
           similarityThreshold: q.similarity_threshold || 0.7,
-          semanticMatching: q.semantic_matching !== false // Default to true if not specified
+          semanticMatching: q.semantic_matching !== false
         }));
         setQuestions(formattedQuestions);
       }
@@ -66,7 +66,6 @@ const Index = () => {
       if (error) throw error;
 
       if (data) {
-        // Get the basic test information
         const basicTests: Test[] = data.map(t => ({
           id: t.id,
           title: t.title,
@@ -74,7 +73,6 @@ const Index = () => {
           createdAt: new Date(t.created_at)
         }));
         
-        // For each test, fetch its questions
         const testsWithQuestions = await Promise.all(
           basicTests.map(async (test) => {
             const { data: testQuestionsData, error: testQuestionsError } = await supabase
@@ -178,17 +176,16 @@ const Index = () => {
   };
 
   const handleCreateTest = async (
-    testData: Omit<Test, "id" | "createdAt">,
+    newTestData: Omit<Test, "id" | "createdAt">,
     selectedQuestionIds: string[]
   ) => {
     try {
-      // First, create the test
-      const { data: testData, error: testError } = await supabase
+      const { data: createdTestData, error: testError } = await supabase
         .from('tests')
         .insert([
           { 
-            title: testData.title,
-            description: testData.description
+            title: newTestData.title,
+            description: newTestData.description
           }
         ])
         .select()
@@ -196,10 +193,9 @@ const Index = () => {
 
       if (testError) throw testError;
 
-      if (testData) {
-        // Then, add the test questions with positions
+      if (createdTestData) {
         const testQuestions = selectedQuestionIds.map((questionId, index) => ({
-          test_id: testData.id,
+          test_id: createdTestData.id,
           question_id: questionId,
           position: index
         }));
@@ -210,16 +206,15 @@ const Index = () => {
 
         if (testQuestionsError) throw testQuestionsError;
 
-        // Create the new test object with questions
         const selectedQuestions = questions.filter(q => 
           selectedQuestionIds.includes(q.id)
         );
 
         const newTest: Test = {
-          id: testData.id,
-          title: testData.title,
-          description: testData.description || undefined,
-          createdAt: new Date(testData.created_at),
+          id: createdTestData.id,
+          title: createdTestData.title,
+          description: createdTestData.description || undefined,
+          createdAt: new Date(createdTestData.created_at),
           questions: selectedQuestions
         };
         
