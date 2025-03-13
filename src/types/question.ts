@@ -11,8 +11,25 @@ export interface Question {
 export interface StudentAnswer {
   id: string;
   questionId: string;
+  testId?: string;
   studentName: string;
   answer: string;
   submittedAt: Date;
   isCorrect?: boolean;
+}
+
+export interface Test {
+  id: string;
+  title: string;
+  description?: string;
+  createdAt: Date;
+  questions?: Question[];
+}
+
+export interface TestQuestion {
+  id: string;
+  testId: string;
+  questionId: string;
+  position: number;
+  question?: Question;
 }

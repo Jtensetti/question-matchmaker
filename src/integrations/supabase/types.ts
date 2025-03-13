@@ -64,6 +64,7 @@ export type Database = {
           question_id: string
           student_name: string
           submitted_at: string
+          test_id: string | null
         }
         Insert: {
           answer: string
@@ -71,6 +72,7 @@ export type Database = {
           question_id: string
           student_name: string
           submitted_at?: string
+          test_id?: string | null
         }
         Update: {
           answer?: string
@@ -78,6 +80,7 @@ export type Database = {
           question_id?: string
           student_name?: string
           submitted_at?: string
+          test_id?: string | null
         }
         Relationships: [
           {
@@ -87,7 +90,71 @@ export type Database = {
             referencedRelation: "questions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_answers_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      test_questions: {
+        Row: {
+          id: string
+          position: number
+          question_id: string
+          test_id: string
+        }
+        Insert: {
+          id?: string
+          position?: number
+          question_id: string
+          test_id: string
+        }
+        Update: {
+          id?: string
+          position?: number
+          question_id?: string
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_questions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tests: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+        }
+        Relationships: []
       }
     }
     Views: {
