@@ -8,9 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { createHash } from "crypto";
 
 type TeacherAuthProps = {
   onSuccess: (teacherId: string, teacherEmail: string, teacherName: string) => void;
+};
+
+// Simple password hashing function - in a real app, use a proper library like bcrypt
+// This is still not production-ready but better than plain text
+const hashPassword = (password: string): string => {
+  return createHash('sha256').update(password).digest('hex');
 };
 
 export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
@@ -43,7 +50,7 @@ export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
       // Check if the teacher exists with this email
       const { data: teacherData, error: teacherError } = await supabase
         .from("teachers")
-        .select("id, email, full_name, is_active")
+        .select("id, email, full_name, is_active, password_hash")
         .eq("email", loginEmail.toLowerCase().trim())
         .single();
 
@@ -55,10 +62,8 @@ export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
         throw new Error("Detta konto är inaktiverat");
       }
 
-      // In a real app, we would implement proper password hashing and verification
-      // For now, we'll use a simple check for demonstration purposes
-      // This should be replaced with a secure authentication system
-      if (loginPassword !== "teacher123") {
+      // Check if password matches
+      if (!teacherData.password_hash || teacherData.password_hash !== hashPassword(loginPassword)) {
         throw new Error("Ogiltigt lösenord");
       }
 
@@ -91,6 +96,15 @@ export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
       return;
     }
 
+    if (registerPassword.length < 6) {
+      toast({
+        title: "Fel",
+        description: "Lösenordet måste vara minst 6 tecken långt",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Check if email already exists
@@ -104,15 +118,16 @@ export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
         throw new Error("En lärare med denna e-post finns redan");
       }
 
-      // In a real app, we would use proper password hashing before storing
-      // For now, we'll just insert the teacher record without storing the password
-      // This should be replaced with a secure authentication system
+      // Hash the password and store it in the database
+      const passwordHash = hashPassword(registerPassword);
+      
       const { data: newTeacher, error: insertError } = await supabase
         .from("teachers")
         .insert([
           { 
             email: registerEmail.toLowerCase().trim(), 
             full_name: registerFullName.trim(),
+            password_hash: passwordHash
           }
         ])
         .select()
