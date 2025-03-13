@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Test, Question, TestQuestion } from "@/types/question";
+import { Test, Question } from "@/types/question";
 import { Progress } from "@/components/ui/progress";
 
 const TestTaking = () => {
