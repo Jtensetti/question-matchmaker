@@ -11,7 +11,6 @@ const Index = () => {
   const [isTeacher, setIsTeacher] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const { toast } = useToast();
-  const [isChecking, setIsChecking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -85,59 +84,6 @@ const Index = () => {
     }
   };
 
-  const handleAnswerSubmit = async (questionId: string, studentAnswer: string) => {
-    const question = questions.find((q) => q.id === questionId);
-    if (!question) return;
-
-    setIsChecking(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('check-semantic-similarity', {
-        body: { text1: question.answer, text2: studentAnswer }
-      });
-
-      if (error) {
-        if (error.status === 429) {
-          toast({
-            title: "Please wait",
-            description: "Too many attempts. Please wait a few seconds before trying again.",
-            variant: "destructive",
-          });
-          // Wait for 5 seconds before allowing new submissions
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          return;
-        }
-        throw error;
-      }
-
-      toast({
-        title: data.isCorrect ? "Correct!" : "Incorrect",
-        description: data.isCorrect
-          ? "Great job! Your answer is semantically correct!"
-          : "Try again. Your answer doesn't match the expected meaning.",
-        variant: data.isCorrect ? "default" : "destructive",
-      });
-    } catch (error) {
-      console.error('Error checking answer:', error);
-      if (error.error?.message?.includes('429') || error.status === 429) {
-        toast({
-          title: "Rate limit reached",
-          description: "Please wait a few seconds before trying again.",
-          variant: "destructive",
-        });
-        // Wait for 5 seconds before allowing new submissions
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "There was an error checking your answer. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -194,8 +140,6 @@ const Index = () => {
                   <QuestionCard
                     key={question.id}
                     question={question}
-                    onAnswerSubmit={(answer) => handleAnswerSubmit(question.id, answer)}
-                    isLoading={isChecking}
                   />
                 ))
               )}

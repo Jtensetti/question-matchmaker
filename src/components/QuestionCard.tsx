@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { compareTwoStrings } from "string-similarity";
 
 interface QuestionCardProps {
   question: Question;
@@ -22,6 +23,7 @@ export const QuestionCard = ({
 }: QuestionCardProps) => {
   const [answer, setAnswer] = useState("");
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   const handleSubmit = () => {
     if (!answer.trim()) {
@@ -42,8 +44,37 @@ export const QuestionCard = ({
       return;
     }
 
-    onAnswerSubmit?.(answer);
-    setAnswer("");
+    // If we have the correct answer (teacher mode), we can check it locally
+    if (question.answer) {
+      setChecking(true);
+      
+      // Simulate a small delay to make the checking feel natural
+      setTimeout(() => {
+        // Calculate similarity between student answer and correct answer
+        const similarity = compareTwoStrings(
+          answer.trim().toLowerCase(),
+          question.answer.trim().toLowerCase()
+        );
+        
+        // Consider it correct if similarity is above 0.7 (70%)
+        const isCorrect = similarity > 0.7;
+        
+        toast({
+          title: isCorrect ? "Correct!" : "Incorrect",
+          description: isCorrect
+            ? "Great job! Your answer is semantically correct!"
+            : "Try again. Your answer doesn't match the expected meaning.",
+          variant: isCorrect ? "default" : "destructive",
+        });
+        
+        setChecking(false);
+        setAnswer("");
+      }, 1000);
+    } else {
+      // If we don't have the correct answer (old behavior), use the callback
+      onAnswerSubmit?.(answer);
+      setAnswer("");
+    }
   };
 
   return (
@@ -64,14 +95,14 @@ export const QuestionCard = ({
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               className="w-full"
-              disabled={isLoading || isRateLimited}
+              disabled={isLoading || isRateLimited || checking}
             />
             <Button 
               onClick={handleSubmit} 
               className="w-full"
-              disabled={isLoading || isRateLimited}
+              disabled={isLoading || isRateLimited || checking}
             >
-              {isLoading ? (
+              {isLoading || checking ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Checking Answer
