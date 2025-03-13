@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { compareTwoStrings } from "string-similarity";
+import { checkSemanticMatch, isAnswerCorrect } from "@/utils/semanticMatching";
 
 interface QuestionCardProps {
   question: Question;
@@ -42,10 +42,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, isTeacher 
     setIsSubmitting(true);
 
     try {
-      // Calculate similarity
-      const calculatedSimilarity = compareTwoStrings(
-        userAnswer.toLowerCase().trim(),
-        question.answer.toLowerCase().trim()
+      // Calculate similarity with improved semantic matching
+      const calculatedSimilarity = await checkSemanticMatch(
+        userAnswer.trim(),
+        question.answer.trim()
       );
       
       setSimilarity(calculatedSimilarity);

@@ -54,7 +54,9 @@ serve(async (req) => {
             Teacher's answer: "${text1}"
             Student's answer: "${text2}"
             
-            Are they semantically equivalent? Respond with only true or false.`
+            Are they semantically equivalent? Consider translation equivalence like "Helsinki" and "Helsingfors". But if the teacher's answer is a complex sentence and the student's answer is just a single word that appears in that sentence, they're usually not equivalent.
+            
+            Respond with only true or false.`
           }
         ],
         temperature: 0.3,

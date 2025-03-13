@@ -1,23 +1,22 @@
 
 import { compareTwoStrings } from "string-similarity";
+import { supabase } from "@/integrations/supabase/client";
 
-// A simplified semantic matching approach 
-export const checkSemanticMatch = (studentAnswer: string, correctAnswer: string): number => {
+// A more robust semantic matching approach 
+export const checkSemanticMatch = async (studentAnswer: string, correctAnswer: string): Promise<number> => {
   // First, normalize both answers (lowercase, trim whitespace)
   const normalizedStudentAnswer = studentAnswer.trim().toLowerCase();
   const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
   
-  // Check if the student answer is a direct substring of the correct answer
+  // Check if the student answer is exactly the same as the correct answer
+  if (normalizedStudentAnswer === normalizedCorrectAnswer) {
+    return 1.0;
+  }
+  
+  // Check for direct substring matching (for key terms)
   // This helps with cases where the student provides just "Madrid" vs "The capital of Spain is Madrid"
-  if (normalizedCorrectAnswer.includes(normalizedStudentAnswer) && 
-      normalizedStudentAnswer.length > 2 && // Avoid matching single characters
-      // Make sure it's a complete word match, not partial
-      (normalizedCorrectAnswer.includes(` ${normalizedStudentAnswer} `) || 
-       normalizedCorrectAnswer.includes(` ${normalizedStudentAnswer}.`) ||
-       normalizedCorrectAnswer.includes(`${normalizedStudentAnswer}.`) ||
-       normalizedCorrectAnswer.endsWith(` ${normalizedStudentAnswer}`) ||
-       normalizedCorrectAnswer === normalizedStudentAnswer)) {
-    // It's a key part of the answer, so give it a high score
+  // but we now also check for word boundaries to avoid matching substrings of words
+  if (isKeyPartOfAnswer(normalizedStudentAnswer, normalizedCorrectAnswer)) {
     return 0.9;
   }
   
@@ -30,19 +29,140 @@ export const checkSemanticMatch = (studentAnswer: string, correctAnswer: string)
     return 0.85;
   }
   
+  try {
+    // Try to check synonyms and translations for names of places
+    // For example, "Helsingfors" and "Helsinki" are the same city in different languages
+    // or if other synonyms are provided
+    const synonymMatch = await checkSynonymsAndTranslations(normalizedStudentAnswer, normalizedCorrectAnswer);
+    if (synonymMatch > 0.8) {
+      return synonymMatch;
+    }
+  } catch (error) {
+    console.error("Error in advanced semantic matching:", error);
+    // Fall back to basic similarity if there's an error
+  }
+  
+  // Check if the student's answer is too simple compared to a complex correct answer
+  // This helps catch cases where a student says "Denmark" when the answer is more complex
+  if (correctWords.length > 5 && studentWords.length < 3) {
+    // If the correct answer is a full sentence and student answer is very short
+    // Lower the similarity score significantly
+    return Math.min(0.5, compareTwoStrings(normalizedStudentAnswer, normalizedCorrectAnswer));
+  }
+  
   // For more complex comparisons, use string similarity
   return compareTwoStrings(normalizedStudentAnswer, normalizedCorrectAnswer);
 };
 
+// Helper function to check if answer is a key part of the expected answer
+function isKeyPartOfAnswer(studentAnswer: string, correctAnswer: string): boolean {
+  if (studentAnswer.length < 3) return false; // Too short to be meaningful
+  
+  // Check if the correct answer contains the student answer as a whole word
+  const regex = new RegExp(`\\b${escapeRegExp(studentAnswer)}\\b`, 'i');
+  if (regex.test(correctAnswer)) {
+    // The student answer is a whole word in the correct answer
+
+    // Don't match if the student answer is just a common word like "the", "a", "is", etc.
+    const commonWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 
+                         'i', 'you', 'he', 'she', 'it', 'we', 'they', 'and', 'or', 'for', 
+                         'in', 'on', 'at', 'by', 'to', 'of', 'with', 'about'];
+    
+    if (commonWords.includes(studentAnswer)) {
+      return false;
+    }
+    
+    // Check if it's a significant part of the answer, not just a trivial word
+    // For city names, country names, etc. - these are important
+    return true;
+  }
+  
+  return false;
+}
+
+// Helper to escape special characters in regex
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Helper function to check for synonyms and translations
+// This would ideally use an external API but for demonstration we'll use
+// a simple list of known synonyms for common capitals and other answers
+async function checkSynonymsAndTranslations(studentAnswer: string, correctAnswer: string): Promise<number> {
+  // Known translations of city names
+  const knownTranslations: Record<string, string[]> = {
+    'helsinki': ['helsingfors'],
+    'copenhagen': ['köpenhamn', 'kopenhamn', 'kobenhavn'],
+    'stockholm': ['tukholma'],
+    'london': ['londres', 'londra'],
+    'paris': ['parigi', 'parijs'],
+    'rome': ['roma', 'rom'],
+    'moscow': ['moskva', 'moscou', 'moskau'],
+    'vienna': ['wien', 'bécs'],
+    'prague': ['praha', 'prag'],
+    'athens': ['athen', 'athina', 'ateny'],
+    'warsaw': ['warszawa', 'varsóvia'],
+    'lisbon': ['lisboa', 'lissabon'],
+    'dublin': ['baile átha cliath'],
+    'amsterdam': ['amsterdã'],
+    'brussels': ['bruxelles', 'brussel'],
+    'bern': ['berne', 'berna'],
+    'oslo': ['oslo'],
+    'madrid': ['madri', 'madryt'],
+    'berlin': ['berlín'],
+    'budapest': ['budapeszt']
+  };
+
+  // Try to find exact matches in known translations
+  for (const [canonical, translations] of Object.entries(knownTranslations)) {
+    if (studentAnswer === canonical || correctAnswer === canonical) {
+      if (translations.includes(studentAnswer) || translations.includes(correctAnswer)) {
+        return 1.0; // Perfect match through translation
+      }
+    }
+    
+    for (const translation of translations) {
+      if (studentAnswer === translation || correctAnswer === translation) {
+        if (canonical === correctAnswer || canonical === studentAnswer) {
+          return 1.0; // Perfect match through translation
+        }
+      }
+    }
+  }
+  
+  // Try to use the Supabase edge function for more advanced semantic matching
+  // This will call OpenAI's API to check for semantic equivalence
+  try {
+    const { data, error } = await supabase.functions.invoke('check-semantic-similarity', {
+      body: {
+        text1: correctAnswer,
+        text2: studentAnswer
+      }
+    });
+    
+    if (error) throw error;
+    
+    if (data && data.isCorrect) {
+      return 0.95; // High confidence match through AI
+    }
+    
+    return 0.4; // AI determined they are not semantically equivalent
+  } catch (error) {
+    console.error("Error calling semantic similarity function:", error);
+    // If error, fall back to string comparison
+    return compareTwoStrings(studentAnswer, correctAnswer);
+  }
+}
+
 // Helper function to determine if an answer is correct based on threshold
-export const isAnswerCorrect = (
+export const isAnswerCorrect = async (
   studentAnswer: string, 
   correctAnswer: string, 
   similarityThreshold: number = 0.7,
   semanticMatching: boolean = true
-): boolean => {
+): Promise<boolean> => {
   if (semanticMatching) {
-    return checkSemanticMatch(studentAnswer, correctAnswer) >= similarityThreshold;
+    return await checkSemanticMatch(studentAnswer, correctAnswer) >= similarityThreshold;
   } else {
     // Fall back to regular string similarity
     return compareTwoStrings(

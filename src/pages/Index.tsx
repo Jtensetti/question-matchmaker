@@ -417,6 +417,9 @@ const Index = () => {
                         onSubmit={handleCreateTest} 
                         questions={questions}
                         onCancel={() => setShowCreateTest(false)}
+                        onQuestionCreated={(newQuestion) => {
+                          setQuestions(prev => [newQuestion, ...prev]);
+                        }}
                       />
                     </>
                   ) : (
