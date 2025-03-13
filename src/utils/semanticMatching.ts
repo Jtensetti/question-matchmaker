@@ -1,51 +1,78 @@
 
 import { compareTwoStrings } from "string-similarity";
+import { supabase } from "@/integrations/supabase/client";
 
 // A more robust semantic matching approach 
-export const checkSemanticMatch = (studentAnswer: string, correctAnswer: string): number => {
-  // First, normalize both answers (lowercase, trim whitespace)
-  const normalizedStudentAnswer = studentAnswer.trim().toLowerCase();
-  const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
-  
-  // Check if the student answer is exactly the same as the correct answer
-  if (normalizedStudentAnswer === normalizedCorrectAnswer) {
-    return 1.0;
+export const checkSemanticMatch = async (
+  studentAnswer: string, 
+  correctAnswer: string,
+  strictness: number = 0.7
+): Promise<number> => {
+  try {
+    // First try to use the Supabase Edge Function for more advanced matching
+    const { data, error } = await supabase.functions.invoke("check-semantic-similarity", {
+      body: {
+        text1: studentAnswer,
+        text2: correctAnswer,
+        strictness
+      }
+    });
+
+    if (error) {
+      console.error("Error calling semantic similarity function:", error);
+      // Fall back to local implementation
+      throw new Error("Edge function failed");
+    }
+
+    return data.similarity;
+  } catch (error) {
+    console.warn("Using fallback local semantic matching due to error:", error);
+    
+    // Fallback to local implementation
+    // First, normalize both answers (lowercase, trim whitespace)
+    const normalizedStudentAnswer = studentAnswer.trim().toLowerCase();
+    const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
+    
+    // Check if the student answer is exactly the same as the correct answer
+    if (normalizedStudentAnswer === normalizedCorrectAnswer) {
+      return 1.0;
+    }
+    
+    // Check for direct substring matching (for key terms)
+    // This helps with cases where the student provides just "Madrid" vs "The capital of Spain is Madrid"
+    // but we now also check for word boundaries to avoid matching substrings of words
+    if (isKeyPartOfAnswer(normalizedStudentAnswer, normalizedCorrectAnswer)) {
+      return 0.9;
+    }
+    
+    // For key facts or single word answers, check if they match directly
+    const correctWords = normalizedCorrectAnswer.split(/\s+/);
+    const studentWords = normalizedStudentAnswer.split(/\s+/);
+    
+    // If the student provided a single word and it's in the correct answer
+    if (studentWords.length === 1 && correctWords.includes(studentWords[0]) && studentWords[0].length > 3) {
+      return 0.85;
+    }
+    
+    // Check synonyms and translations for names of places
+    // For example, "Helsingfors" and "Helsinki" are the same city in different languages
+    // or if other synonyms are provided
+    const synonymMatch = checkSynonymsAndTranslations(normalizedStudentAnswer, normalizedCorrectAnswer);
+    if (synonymMatch > 0.8) {
+      return synonymMatch;
+    }
+    
+    // Check if the student's answer is too simple compared to a complex correct answer
+    // This helps catch cases where a student says "Denmark" when the answer is more complex
+    if (correctWords.length > 5 && studentWords.length < 3) {
+      // If the correct answer is a full sentence and student answer is very short
+      // Lower the similarity score significantly
+      return Math.min(0.5, compareTwoStrings(normalizedStudentAnswer, normalizedCorrectAnswer));
+    }
+    
+    // For more complex comparisons, use string similarity
+    return compareTwoStrings(normalizedStudentAnswer, normalizedCorrectAnswer);
   }
-  
-  // Check for direct substring matching (for key terms)
-  // This helps with cases where the student provides just "Madrid" vs "The capital of Spain is Madrid"
-  // but we now also check for word boundaries to avoid matching substrings of words
-  if (isKeyPartOfAnswer(normalizedStudentAnswer, normalizedCorrectAnswer)) {
-    return 0.9;
-  }
-  
-  // For key facts or single word answers, check if they match directly
-  const correctWords = normalizedCorrectAnswer.split(/\s+/);
-  const studentWords = normalizedStudentAnswer.split(/\s+/);
-  
-  // If the student provided a single word and it's in the correct answer
-  if (studentWords.length === 1 && correctWords.includes(studentWords[0]) && studentWords[0].length > 3) {
-    return 0.85;
-  }
-  
-  // Check synonyms and translations for names of places
-  // For example, "Helsingfors" and "Helsinki" are the same city in different languages
-  // or if other synonyms are provided
-  const synonymMatch = checkSynonymsAndTranslations(normalizedStudentAnswer, normalizedCorrectAnswer);
-  if (synonymMatch > 0.8) {
-    return synonymMatch;
-  }
-  
-  // Check if the student's answer is too simple compared to a complex correct answer
-  // This helps catch cases where a student says "Denmark" when the answer is more complex
-  if (correctWords.length > 5 && studentWords.length < 3) {
-    // If the correct answer is a full sentence and student answer is very short
-    // Lower the similarity score significantly
-    return Math.min(0.5, compareTwoStrings(normalizedStudentAnswer, normalizedCorrectAnswer));
-  }
-  
-  // For more complex comparisons, use string similarity
-  return compareTwoStrings(normalizedStudentAnswer, normalizedCorrectAnswer);
 };
 
 // Helper function to check if answer is a key part of the expected answer
@@ -79,14 +106,12 @@ function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Helper function to check for synonyms and translations
-// This would ideally use an external API but for demonstration we'll use
-// a simple list of known synonyms for common capitals and other answers
+// Enhanced helper function to check for synonyms, translations, and spelling variants
 function checkSynonymsAndTranslations(studentAnswer: string, correctAnswer: string): number {
-  // Known translations of city names
+  // Known translations and spelling variants of city names
   const knownTranslations: Record<string, string[]> = {
-    'helsinki': ['helsingfors'],
-    'copenhagen': ['köpenhamn', 'kopenhamn', 'kobenhavn'],
+    'helsinki': ['helsingfors', 'helsinkki', 'helsinky'],
+    'copenhagen': ['köpenhamn', 'kopenhamn', 'kobenhavn', 'kopenhagen', 'copenhague'],
     'stockholm': ['tukholma'],
     'london': ['londres', 'londra'],
     'paris': ['parigi', 'parijs'],
@@ -102,41 +127,114 @@ function checkSynonymsAndTranslations(studentAnswer: string, correctAnswer: stri
     'brussels': ['bruxelles', 'brussel'],
     'bern': ['berne', 'berna'],
     'oslo': ['oslo'],
-    'madrid': ['madri', 'madryt'],
+    'madrid': ['madri', 'madryt', 'madriid', 'madird'],
     'berlin': ['berlín'],
-    'budapest': ['budapeszt']
+    'budapest': ['budapeszt'],
+    'bangkok': ['bangkok', 'krung thep', 'krungthep'],
+    // Add more cities as needed
   };
 
-  // Try to find exact matches in known translations
-  for (const [canonical, translations] of Object.entries(knownTranslations)) {
-    if (studentAnswer === canonical || correctAnswer === canonical) {
-      if (translations.includes(studentAnswer) || translations.includes(correctAnswer)) {
-        return 1.0; // Perfect match through translation
+  // Extract words to find potential city names
+  const studentWords = studentAnswer.split(/\s+/);
+  const correctWords = correctAnswer.split(/\s+/);
+  
+  // Check for each word in student answer
+  for (const studentWord of studentWords) {
+    // Skip very short words
+    if (studentWord.length < 4) continue;
+    
+    // Check if this word is a known city name or translation
+    for (const [canonical, translations] of Object.entries(knownTranslations)) {
+      // If student used canonical name
+      if (studentWord.includes(canonical)) {
+        // Check if correct answer contains any translation
+        for (const translation of translations) {
+          if (correctAnswer.includes(translation)) {
+            return 0.9; // High match for translation
+          }
+        }
+        
+        // Check if correct answer contains the canonical form
+        if (correctAnswer.includes(canonical)) {
+          return 1.0; // Perfect match
+        }
+      }
+      
+      // If student used a translation
+      for (const translation of translations) {
+        if (studentWord.includes(translation)) {
+          // Check if correct answer contains canonical form
+          if (correctAnswer.includes(canonical)) {
+            return 0.9; // High match for translation
+          }
+          
+          // Check if correct answer contains same or different translation
+          for (const correctTranslation of translations) {
+            if (correctAnswer.includes(correctTranslation)) {
+              return 0.9; // High match for translation variants
+            }
+          }
+        }
       }
     }
     
-    for (const translation of translations) {
-      if (studentAnswer === translation || correctAnswer === translation) {
-        if (canonical === correctAnswer || canonical === studentAnswer) {
-          return 1.0; // Perfect match through translation
-        }
+    // Check for typos using Levenshtein distance
+    for (const correctWord of correctWords) {
+      if (correctWord.length < 4) continue; // Skip very short words
+      
+      // If words are similar but not identical (potential typo)
+      if (studentWord !== correctWord && 
+          levenshteinDistance(studentWord, correctWord) <= 2 &&
+          studentWord.length > 4 && correctWord.length > 4) {
+        return 0.85; // Pretty good match for slight misspellings
       }
     }
   }
   
-  // If no translation match, fall back to string comparison
-  return compareTwoStrings(studentAnswer, correctAnswer);
+  // If no translation or typo match found
+  return 0.0;
+}
+
+// Calculate Levenshtein distance between two strings
+function levenshteinDistance(str1: string, str2: string): number {
+  const m = str1.length;
+  const n = str2.length;
+  
+  // Create a matrix of size (m+1) x (n+1)
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  
+  // Fill the first row and column
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  
+  // Fill the rest of the matrix
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (str1[i - 1] === str2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(
+          dp[i - 1][j],     // deletion
+          dp[i][j - 1],     // insertion
+          dp[i - 1][j - 1]  // replacement
+        );
+      }
+    }
+  }
+  
+  return dp[m][n];
 }
 
 // Helper function to determine if an answer is correct based on threshold
-export const isAnswerCorrect = (
+export const isAnswerCorrect = async (
   studentAnswer: string, 
   correctAnswer: string, 
   similarityThreshold: number = 0.7,
   semanticMatching: boolean = true
-): boolean => {
+): Promise<boolean> => {
   if (semanticMatching) {
-    return checkSemanticMatch(studentAnswer, correctAnswer) >= similarityThreshold;
+    const similarity = await checkSemanticMatch(studentAnswer, correctAnswer, similarityThreshold);
+    return similarity >= similarityThreshold;
   } else {
     // Fall back to regular string similarity
     return compareTwoStrings(

@@ -43,15 +43,18 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, isTeacher 
 
     try {
       // Calculate similarity with improved semantic matching
+      const threshold = question.similarityThreshold || 0.7;
+      
+      // First, calculate similarity score
       const calculatedSimilarity = await checkSemanticMatch(
         userAnswer.trim(),
-        question.answer.trim()
+        question.answer.trim(),
+        threshold
       );
       
       setSimilarity(calculatedSimilarity);
       
-      // Check if answer is correct based on similarity threshold
-      const threshold = question.similarityThreshold || 0.7;
+      // Determine if the answer is correct based on similarity threshold
       const correct = calculatedSimilarity >= threshold;
       
       setIsCorrect(correct);
