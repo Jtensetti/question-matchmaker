@@ -22,8 +22,8 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
     e.preventDefault();
     if (!question.trim() || !answer.trim()) {
       toast({
-        title: "Error",
-        description: "Please fill in both question and answer",
+        title: "Fel",
+        description: "Vänligen fyll i både fråga och svar",
         variant: "destructive",
       });
       return;
@@ -38,31 +38,31 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-xl font-semibold">Create New Question</h2>
+        <h2 className="text-xl font-semibold">Skapa ny fråga</h2>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="question" className="text-sm font-medium">
-              Question
+              Fråga
             </label>
             <Input
               id="question"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="E.g., What is the capital of Sweden?"
+              placeholder="T.ex., Vad är huvudstaden i Sverige?"
               className="mt-1"
             />
           </div>
           <div>
             <label htmlFor="answer" className="text-sm font-medium">
-              Answer
+              Svar
             </label>
             <Input
               id="answer"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              placeholder="E.g., Stockholm"
+              placeholder="T.ex., Stockholm"
               className="mt-1"
             />
           </div>
@@ -74,7 +74,7 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
               onCheckedChange={setShowAdvanced}
             />
             <label htmlFor="advanced-mode" className="text-sm font-medium cursor-pointer">
-              Show advanced settings
+              Visa avancerade inställningar
             </label>
           </div>
           
@@ -83,13 +83,13 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label htmlFor="similarity" className="text-sm font-medium">
-                    Answer strictness: {Math.round(similarityThreshold * 100)}%
+                    Svarsprecision: {Math.round(similarityThreshold * 100)}%
                   </label>
                   <div className="text-xs text-muted-foreground">
-                    {similarityThreshold < 0.4 ? "Very lenient" : 
-                     similarityThreshold < 0.6 ? "Lenient" : 
-                     similarityThreshold < 0.8 ? "Moderate" : 
-                     similarityThreshold < 0.9 ? "Strict" : "Very strict"}
+                    {similarityThreshold < 0.4 ? "Mycket tillåtande" : 
+                     similarityThreshold < 0.6 ? "Tillåtande" : 
+                     similarityThreshold < 0.8 ? "Moderat" : 
+                     similarityThreshold < 0.9 ? "Strikt" : "Mycket strikt"}
                   </div>
                 </div>
                 <Slider
@@ -101,9 +101,9 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
                   onValueChange={(values) => setSimilarityThreshold(values[0])}
                 />
                 <div className="text-xs text-muted-foreground pt-1">
-                  <span className="font-medium">Low:</span> More flexible with answers
+                  <span className="font-medium">Låg:</span> Mer flexibel med svar
                   <br />
-                  <span className="font-medium">High:</span> Requires more precision
+                  <span className="font-medium">Hög:</span> Kräver mer precision
                 </div>
               </div>
               
@@ -116,21 +116,21 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
                       onCheckedChange={setSemanticMatching}
                     />
                     <label htmlFor="semantic-matching" className="text-sm font-medium cursor-pointer">
-                      Use semantic matching
+                      Använd semantisk matchning
                     </label>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground pt-1">
-                  <span className="font-medium">ON:</span> Match by meaning (e.g., "Madrid" matches "The capital of Spain is Madrid")
+                  <span className="font-medium">PÅ:</span> Matcha baserat på betydelse (t.ex. "Madrid" matchar "Spaniens huvudstad är Madrid")
                   <br />
-                  <span className="font-medium">OFF:</span> Match by spelling/characters only
+                  <span className="font-medium">AV:</span> Matcha endast baserat på stavning/tecken
                 </div>
               </div>
             </div>
           )}
           
           <Button type="submit" className="w-full">
-            Create Question
+            Skapa fråga
           </Button>
         </form>
       </CardContent>
