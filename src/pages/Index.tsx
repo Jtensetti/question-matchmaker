@@ -31,7 +31,8 @@ const Index = () => {
           id: q.id,
           text: q.text,
           answer: q.answer,
-          createdAt: new Date(q.created_at)
+          createdAt: new Date(q.created_at),
+          similarityThreshold: q.similarity_threshold || 0.7
         }));
         setQuestions(formattedQuestions);
       }
@@ -47,12 +48,16 @@ const Index = () => {
     }
   };
 
-  const handleCreateQuestion = async (questionText: string, answerText: string) => {
+  const handleCreateQuestion = async (questionText: string, answerText: string, similarityThreshold: number) => {
     try {
       const { data, error } = await supabase
         .from('public.questions')
         .insert([
-          { text: questionText, answer: answerText }
+          { 
+            text: questionText, 
+            answer: answerText,
+            similarity_threshold: similarityThreshold
+          }
         ])
         .select()
         .single();
@@ -64,7 +69,8 @@ const Index = () => {
           id: data.id,
           text: data.text,
           answer: data.answer,
-          createdAt: new Date(data.created_at)
+          createdAt: new Date(data.created_at),
+          similarityThreshold: data.similarity_threshold
         };
         
         setQuestions(prev => [newQuestion, ...prev]);

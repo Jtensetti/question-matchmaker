@@ -25,6 +25,9 @@ export const QuestionCard = ({
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [checking, setChecking] = useState(false);
 
+  // Use the provided threshold or default to 0.7 (70%)
+  const similarityThreshold = question.similarityThreshold ?? 0.7;
+
   const handleSubmit = () => {
     if (!answer.trim()) {
       toast({
@@ -56,14 +59,14 @@ export const QuestionCard = ({
           question.answer.trim().toLowerCase()
         );
         
-        // Consider it correct if similarity is above 0.7 (70%)
-        const isCorrect = similarity > 0.7;
+        // Consider it correct if similarity is above the threshold
+        const isCorrect = similarity > similarityThreshold;
         
         toast({
           title: isCorrect ? "Correct!" : "Incorrect",
           description: isCorrect
-            ? "Great job! Your answer is semantically correct!"
-            : "Try again. Your answer doesn't match the expected meaning.",
+            ? `Great job! Your answer is ${Math.round(similarity * 100)}% similar to the expected answer.`
+            : `Try again. Your answer is only ${Math.round(similarity * 100)}% similar to the expected meaning.`,
           variant: isCorrect ? "default" : "destructive",
         });
         
@@ -84,9 +87,18 @@ export const QuestionCard = ({
       </CardHeader>
       <CardContent>
         {isTeacher ? (
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Answer:</p>
             <p className="mt-1">{question.answer}</p>
+            {question.similarityThreshold !== undefined && (
+              <div className="text-xs text-muted-foreground mt-2">
+                <span className="font-medium">Strictness:</span> {Math.round(question.similarityThreshold * 100)}% 
+                ({question.similarityThreshold < 0.4 ? "Very lenient" : 
+                  question.similarityThreshold < 0.6 ? "Lenient" : 
+                  question.similarityThreshold < 0.8 ? "Moderate" : 
+                  question.similarityThreshold < 0.9 ? "Strict" : "Very strict"})
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
