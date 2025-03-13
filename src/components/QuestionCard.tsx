@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { stringSimilarity } from "@/utils/semanticMatching";
+import { compareTwoStrings } from "string-similarity";
 
 interface QuestionCardProps {
   question: Question;
@@ -43,7 +43,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, isTeacher 
 
     try {
       // Calculate similarity
-      const calculatedSimilarity = stringSimilarity(
+      const calculatedSimilarity = compareTwoStrings(
         userAnswer.toLowerCase().trim(),
         question.answer.toLowerCase().trim()
       );
