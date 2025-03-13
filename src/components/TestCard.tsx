@@ -6,18 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Share2, ExternalLink, Copy, ChevronDown, ChevronUp, Edit, Save, X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Share2, ExternalLink, Copy, ChevronDown, ChevronUp, Edit, Save, X, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TestCardProps {
   test: Test;
   questions: Question[];
   onUpdate: (updatedTest: Test) => void;
+  onDelete?: (testId: string) => void;
 }
 
-export const TestCard = ({ test, questions, onUpdate }: TestCardProps) => {
+export const TestCard = ({ test, questions, onUpdate, onDelete }: TestCardProps) => {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -27,6 +38,8 @@ export const TestCard = ({ test, questions, onUpdate }: TestCardProps) => {
     test.questions?.map(q => q.id) || []
   );
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const shareLink = `${window.location.origin}/test/${test.id}`;
 
@@ -124,6 +137,57 @@ export const TestCard = ({ test, questions, onUpdate }: TestCardProps) => {
       });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteTest = async () => {
+    if (!onDelete) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // First delete all test questions
+      const { error: testQuestionsError } = await supabase
+        .from('test_questions')
+        .delete()
+        .eq('test_id', test.id);
+        
+      if (testQuestionsError) throw testQuestionsError;
+      
+      // Then delete test answers
+      const { error: answersError } = await supabase
+        .from('student_answers')
+        .delete()
+        .eq('test_id', test.id);
+        
+      if (answersError) throw answersError;
+      
+      // Finally delete the test itself
+      const { error: testError } = await supabase
+        .from('tests')
+        .delete()
+        .eq('id', test.id);
+        
+      if (testError) throw testError;
+      
+      // Notify parent component
+      onDelete(test.id);
+      
+      toast({
+        title: "Framgång",
+        description: "Testet har raderats",
+      });
+      
+    } catch (error) {
+      console.error('Error deleting test:', error);
+      toast({
+        title: "Fel",
+        description: "Det gick inte att radera testet. Försök igen.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -289,15 +353,28 @@ export const TestCard = ({ test, questions, onUpdate }: TestCardProps) => {
                   Visa resultat
                 </Button>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-sm"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Redigera
-              </Button>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-sm"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Redigera
+                </Button>
+                {onDelete && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Radera
+                  </Button>
+                )}
+              </div>
             </CardFooter>
           </>
         )}
@@ -333,6 +410,38 @@ export const TestCard = ({ test, questions, onUpdate }: TestCardProps) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Är du säker på att du vill radera detta test?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Denna åtgärd kan inte ångras. Detta kommer att permanent radera testet 
+              "{test.title}" och alla relaterade svar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteTest();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Raderar...
+                </>
+              ) : (
+                "Radera test"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

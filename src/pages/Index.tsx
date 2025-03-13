@@ -8,10 +8,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { CreateTestForm } from "@/components/CreateTestForm";
 import { TestCard } from "@/components/TestCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Loader2, FileQuestion, BookOpen, Lock } from "lucide-react";
+import { PlusCircle, Loader2, FileQuestion, BookOpen, Lock, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Index = () => {
   const [isTeacher, setIsTeacher] = useState(false);
@@ -23,6 +33,9 @@ const Index = () => {
   const [showTeacherDialog, setShowTeacherDialog] = useState(false);
   const [teacherPassword, setTeacherPassword] = useState("");
   const [isCheckingPassword, setIsCheckingPassword] = useState(false);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  const [showDeleteQuestionDialog, setShowDeleteQuestionDialog] = useState(false);
+  const [isDeletingQuestion, setIsDeletingQuestion] = useState(false);
 
   const TEACHER_PASSWORD = "teacher123";
 
@@ -249,6 +262,69 @@ const Index = () => {
     );
   };
 
+  const handleDeleteTest = (testId: string) => {
+    setTests(prev => prev.filter(test => test.id !== testId));
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    setIsDeletingQuestion(true);
+    
+    try {
+      const { data: testQuestionsData, error: testQuestionsError } = await supabase
+        .from('test_questions')
+        .select('test_id')
+        .eq('question_id', questionId);
+        
+      if (testQuestionsError) throw testQuestionsError;
+      
+      if (testQuestionsData && testQuestionsData.length > 0) {
+        toast({
+          title: "Kan inte radera",
+          description: "Denna fråga används i ett eller flera tester. Ta bort frågan från testerna först.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const { error: answersError } = await supabase
+        .from('student_answers')
+        .delete()
+        .eq('question_id', questionId);
+        
+      if (answersError) throw answersError;
+      
+      const { error: questionError } = await supabase
+        .from('questions')
+        .delete()
+        .eq('id', questionId);
+        
+      if (questionError) throw questionError;
+      
+      setQuestions(prev => prev.filter(q => q.id !== questionId));
+      
+      toast({
+        title: "Framgång",
+        description: "Frågan har raderats",
+      });
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      toast({
+        title: "Fel",
+        description: "Det gick inte att radera frågan. Försök igen.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingQuestion(false);
+      setShowDeleteQuestionDialog(false);
+      setSelectedQuestionId(null);
+    }
+  };
+
+  const confirmDeleteQuestion = (questionId: string) => {
+    setSelectedQuestionId(questionId);
+    setShowDeleteQuestionDialog(true);
+  };
+
   const handleTeacherModeAccess = () => {
     setShowTeacherDialog(true);
   };
@@ -336,17 +412,11 @@ const Index = () => {
                     <>
                       <div className="flex justify-between items-center">
                         <h2 className="text-xl font-semibold">Skapa nytt test</h2>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setShowCreateTest(false)}
-                        >
-                          Avbryt
-                        </Button>
                       </div>
                       <CreateTestForm 
                         onSubmit={handleCreateTest} 
-                        questions={questions} 
+                        questions={questions}
+                        onCancel={() => setShowCreateTest(false)}
                       />
                     </>
                   ) : (
@@ -375,6 +445,7 @@ const Index = () => {
                             test={test} 
                             questions={questions}
                             onUpdate={handleUpdateTest}
+                            onDelete={handleDeleteTest}
                           />
                         ))
                       )}
@@ -396,6 +467,7 @@ const Index = () => {
                           key={question.id}
                           question={question}
                           isTeacher={true}
+                          onDeleteClick={() => confirmDeleteQuestion(question.id)}
                         />
                       ))
                     )}
@@ -497,6 +569,40 @@ const Index = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeleteQuestionDialog} onOpenChange={setShowDeleteQuestionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Är du säker på att du vill radera denna fråga?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Denna åtgärd kan inte ångras. Detta kommer att permanent radera frågan 
+              och alla relaterade svar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                if (selectedQuestionId) {
+                  handleDeleteQuestion(selectedQuestionId);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeletingQuestion}
+            >
+              {isDeletingQuestion ? (
+                <>
+                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Raderar...
+                </>
+              ) : (
+                "Radera fråga"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -13,9 +13,10 @@ import { Loader2 } from "lucide-react";
 interface CreateTestFormProps {
   onSubmit: (test: Omit<Test, "id" | "createdAt">, selectedQuestionIds: string[]) => void;
   questions: Question[];
+  onCancel?: () => void;
 }
 
-export const CreateTestForm = ({ onSubmit, questions }: CreateTestFormProps) => {
+export const CreateTestForm = ({ onSubmit, questions, onCancel }: CreateTestFormProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
@@ -136,16 +137,23 @@ export const CreateTestForm = ({ onSubmit, questions }: CreateTestFormProps) => 
             )}
           </div>
           
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Skapar test...
-              </>
-            ) : (
-              "Skapa test"
+          <div className="flex justify-end space-x-2">
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Avbryt
+              </Button>
             )}
-          </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Skapar test...
+                </>
+              ) : (
+                "Skapa test"
+              )}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
