@@ -26,8 +26,8 @@ export const CreateTestForm = ({ onSubmit, questions }: CreateTestFormProps) => 
     
     if (!title.trim()) {
       toast({
-        title: "Error",
-        description: "Please provide a title for the test",
+        title: "Fel",
+        description: "Ange en titel för testet",
         variant: "destructive",
       });
       return;
@@ -35,8 +35,8 @@ export const CreateTestForm = ({ onSubmit, questions }: CreateTestFormProps) => 
 
     if (selectedQuestionIds.length === 0) {
       toast({
-        title: "Error",
-        description: "Please select at least one question for the test",
+        title: "Fel",
+        description: "Välj minst en fråga för testet",
         variant: "destructive",
       });
       return;
@@ -69,32 +69,32 @@ export const CreateTestForm = ({ onSubmit, questions }: CreateTestFormProps) => 
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-xl font-semibold">Create New Test</h2>
+        <h2 className="text-xl font-semibold">Skapa nytt test</h2>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="title" className="text-sm font-medium">
-              Test Title
+              Testtitel
             </label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="E.g., Science Quiz - Week 3"
+              placeholder="T.ex. Naturkunskap Quiz - Vecka 3"
               className="mt-1"
             />
           </div>
           
           <div>
             <label htmlFor="description" className="text-sm font-medium">
-              Description (optional)
+              Beskrivning (valfri)
             </label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add any instructions or details about this test"
+              placeholder="Lägg till instruktioner eller detaljer om detta test"
               className="mt-1"
               rows={3}
             />
@@ -102,12 +102,12 @@ export const CreateTestForm = ({ onSubmit, questions }: CreateTestFormProps) => 
           
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              Select Questions for this Test
+              Välj frågor för detta test
             </label>
             
             {questions.length === 0 ? (
               <div className="text-sm text-muted-foreground py-2">
-                No questions available. Create some questions first.
+                Inga frågor tillgängliga. Skapa några frågor först.
               </div>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto border rounded-md p-2">
@@ -127,7 +127,7 @@ export const CreateTestForm = ({ onSubmit, questions }: CreateTestFormProps) => 
                         {question.text}
                       </label>
                       <p className="text-xs text-muted-foreground">
-                        Answer: {question.answer}
+                        Svar: {question.answer}
                       </p>
                     </div>
                   </div>
@@ -140,10 +140,10 @@ export const CreateTestForm = ({ onSubmit, questions }: CreateTestFormProps) => 
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Test...
+                Skapar test...
               </>
             ) : (
-              "Create Test"
+              "Skapa test"
             )}
           </Button>
         </form>

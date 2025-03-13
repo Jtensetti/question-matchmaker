@@ -8,16 +8,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { CreateTestForm } from "@/components/CreateTestForm";
 import { TestCard } from "@/components/TestCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Loader2, FileQuestion, BookOpen } from "lucide-react";
+import { PlusCircle, Loader2, FileQuestion, BookOpen, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 const Index = () => {
-  const [isTeacher, setIsTeacher] = useState(true);
+  const [isTeacher, setIsTeacher] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateTest, setShowCreateTest] = useState(false);
+  const [showTeacherDialog, setShowTeacherDialog] = useState(false);
+  const [teacherPassword, setTeacherPassword] = useState("");
+  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
+
+  const TEACHER_PASSWORD = "teacher123";
 
   useEffect(() => {
     fetchQuestions();
@@ -236,12 +243,44 @@ const Index = () => {
     }
   };
 
+  const handleUpdateTest = (updatedTest: Test) => {
+    setTests(prev => 
+      prev.map(test => test.id === updatedTest.id ? updatedTest : test)
+    );
+  };
+
+  const handleTeacherModeAccess = () => {
+    setShowTeacherDialog(true);
+  };
+
+  const checkTeacherPassword = () => {
+    setIsCheckingPassword(true);
+    setTimeout(() => {
+      if (teacherPassword === TEACHER_PASSWORD) {
+        setIsTeacher(true);
+        setShowTeacherDialog(false);
+        toast({
+          title: "Framgång",
+          description: "Lärarläge aktiverat",
+        });
+      } else {
+        toast({
+          title: "Fel lösenord",
+          description: "Lösenordet du angav är felaktigt",
+          variant: "destructive",
+        });
+      }
+      setTeacherPassword("");
+      setIsCheckingPassword(false);
+    }, 500);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-lg text-muted-foreground">Loading...</p>
+          <p className="text-lg text-muted-foreground">Laddar...</p>
         </div>
       </div>
     );
@@ -251,19 +290,30 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <div className="container py-8 space-y-8">
         <header className="text-center space-y-4">
-          <h1 className="text-4xl font-bold">Question Matchmaker</h1>
+          <h1 className="text-4xl font-bold">Frågematcharen</h1>
           <p className="text-lg text-muted-foreground">
             {isTeacher 
-              ? "Create and manage your questions and tests" 
-              : "Answer questions and test your knowledge"}
+              ? "Skapa och hantera dina frågor och tester" 
+              : "Svara på frågor och testa dina kunskaper"}
           </p>
-          <Button 
-            variant="outline" 
-            onClick={() => setIsTeacher(!isTeacher)}
-            className="animate-fadeIn"
-          >
-            Switch to {isTeacher ? "Student" : "Teacher"} Mode
-          </Button>
+          {isTeacher ? (
+            <Button 
+              variant="outline" 
+              onClick={() => setIsTeacher(false)}
+              className="animate-fadeIn"
+            >
+              Byt till elevläge
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              onClick={handleTeacherModeAccess}
+              className="animate-fadeIn"
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Lärarläge
+            </Button>
+          )}
         </header>
 
         <main className="max-w-3xl mx-auto space-y-6">
@@ -273,11 +323,11 @@ const Index = () => {
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="tests">
                     <BookOpen className="h-4 w-4 mr-2" />
-                    Tests
+                    Tester
                   </TabsTrigger>
                   <TabsTrigger value="questions">
                     <FileQuestion className="h-4 w-4 mr-2" />
-                    Questions
+                    Frågor
                   </TabsTrigger>
                 </TabsList>
                 
@@ -285,13 +335,13 @@ const Index = () => {
                   {showCreateTest ? (
                     <>
                       <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Create New Test</h2>
+                        <h2 className="text-xl font-semibold">Skapa nytt test</h2>
                         <Button 
                           variant="ghost" 
                           size="sm"
                           onClick={() => setShowCreateTest(false)}
                         >
-                          Cancel
+                          Avbryt
                         </Button>
                       </div>
                       <CreateTestForm 
@@ -301,13 +351,13 @@ const Index = () => {
                     </>
                   ) : (
                     <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-semibold">Tests</h2>
+                      <h2 className="text-xl font-semibold">Tester</h2>
                       <Button 
                         onClick={() => setShowCreateTest(true)}
                         size="sm"
                       >
                         <PlusCircle className="h-4 w-4 mr-2" />
-                        Create Test
+                        Skapa test
                       </Button>
                     </div>
                   )}
@@ -316,11 +366,16 @@ const Index = () => {
                     <div className="space-y-4">
                       {tests.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground border rounded-md">
-                          No tests created yet. Click the button above to create your first test!
+                          Inga tester skapade ännu. Klicka på knappen ovan för att skapa ditt första test!
                         </div>
                       ) : (
                         tests.map((test) => (
-                          <TestCard key={test.id} test={test} />
+                          <TestCard 
+                            key={test.id} 
+                            test={test} 
+                            questions={questions}
+                            onUpdate={handleUpdateTest}
+                          />
                         ))
                       )}
                     </div>
@@ -330,10 +385,10 @@ const Index = () => {
                 <TabsContent value="questions" className="mt-6 space-y-4">
                   <CreateQuestionForm onSubmit={handleCreateQuestion} />
                   <div className="space-y-4">
-                    <h2 className="text-xl font-semibold">Created Questions</h2>
+                    <h2 className="text-xl font-semibold">Skapade frågor</h2>
                     {questions.length === 0 ? (
                       <div className="text-center py-12 text-muted-foreground border rounded-md">
-                        No questions created yet. Use the form above to create your first question!
+                        Inga frågor skapade ännu. Använd formuläret ovan för att skapa din första fråga!
                       </div>
                     ) : (
                       questions.map((question) => (
@@ -350,10 +405,10 @@ const Index = () => {
             </>
           ) : (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Available Tests</h2>
+              <h2 className="text-xl font-semibold">Tillgängliga tester</h2>
               {tests.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  No tests available yet. Wait for your teacher to add some!
+                  Inga tester tillgängliga ännu. Vänta på att din lärare lägger till några!
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -367,14 +422,14 @@ const Index = () => {
                               <p className="text-sm text-muted-foreground">{test.description}</p>
                             )}
                             <p className="text-sm mt-2">
-                              <span className="font-medium">{test.questions?.length || 0}</span> questions
+                              <span className="font-medium">{test.questions?.length || 0}</span> frågor
                             </p>
                           </div>
                           <Button 
                             onClick={() => window.open(`/test/${test.id}`, "_blank")}
                             className="w-full"
                           >
-                            Start Test
+                            Starta test
                           </Button>
                         </div>
                       </CardContent>
@@ -383,10 +438,10 @@ const Index = () => {
                 </div>
               )}
               
-              <h2 className="text-xl font-semibold mt-8">Individual Questions</h2>
+              <h2 className="text-xl font-semibold mt-8">Individuella frågor</h2>
               {questions.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  No questions available yet. Wait for your teacher to add some!
+                  Inga frågor tillgängliga ännu. Vänta på att din lärare lägger till några!
                 </div>
               ) : (
                 questions.map((question) => (
@@ -400,6 +455,48 @@ const Index = () => {
           )}
         </main>
       </div>
+
+      <Dialog open={showTeacherDialog} onOpenChange={setShowTeacherDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Lärarläge</DialogTitle>
+            <DialogDescription>
+              Ange lösenordet för att komma åt lärarläget
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Input
+                type="password"
+                placeholder="Lösenord"
+                value={teacherPassword}
+                onChange={(e) => setTeacherPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    checkTeacherPassword();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={checkTeacherPassword}
+              disabled={isCheckingPassword}
+            >
+              {isCheckingPassword ? (
+                <>
+                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Kontrollerar...
+                </>
+              ) : (
+                "Fortsätt"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
