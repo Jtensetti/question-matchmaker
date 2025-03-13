@@ -9,6 +9,10 @@ export interface Question {
 }
 
 export interface StudentAnswer {
+  id: string;
   questionId: string;
+  studentName: string;
   answer: string;
+  submittedAt: Date;
+  isCorrect?: boolean;
 }
