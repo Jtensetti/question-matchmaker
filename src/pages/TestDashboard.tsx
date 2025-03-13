@@ -116,7 +116,8 @@ const TestDashboard = () => {
                 const question = questionsArray.find(q => q.id === ans.question_id);
                 
                 if (question) {
-                  const isCorrect = isAnswerCorrect(
+                  // Calculate correctness synchronously now
+                  const correct = isAnswerCorrect(
                     ans.answer, 
                     question.answer, 
                     question.similarityThreshold || 0.7,
@@ -130,7 +131,7 @@ const TestDashboard = () => {
                     studentName: ans.student_name,
                     answer: ans.answer,
                     submittedAt: new Date(ans.submitted_at),
-                    isCorrect
+                    isCorrect: correct
                   });
                 }
               }

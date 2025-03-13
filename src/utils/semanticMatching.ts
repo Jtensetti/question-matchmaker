@@ -1,9 +1,8 @@
 
 import { compareTwoStrings } from "string-similarity";
-import { supabase } from "@/integrations/supabase/client";
 
 // A more robust semantic matching approach 
-export const checkSemanticMatch = async (studentAnswer: string, correctAnswer: string): Promise<number> => {
+export const checkSemanticMatch = (studentAnswer: string, correctAnswer: string): number => {
   // First, normalize both answers (lowercase, trim whitespace)
   const normalizedStudentAnswer = studentAnswer.trim().toLowerCase();
   const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
@@ -29,17 +28,12 @@ export const checkSemanticMatch = async (studentAnswer: string, correctAnswer: s
     return 0.85;
   }
   
-  try {
-    // Try to check synonyms and translations for names of places
-    // For example, "Helsingfors" and "Helsinki" are the same city in different languages
-    // or if other synonyms are provided
-    const synonymMatch = await checkSynonymsAndTranslations(normalizedStudentAnswer, normalizedCorrectAnswer);
-    if (synonymMatch > 0.8) {
-      return synonymMatch;
-    }
-  } catch (error) {
-    console.error("Error in advanced semantic matching:", error);
-    // Fall back to basic similarity if there's an error
+  // Check synonyms and translations for names of places
+  // For example, "Helsingfors" and "Helsinki" are the same city in different languages
+  // or if other synonyms are provided
+  const synonymMatch = checkSynonymsAndTranslations(normalizedStudentAnswer, normalizedCorrectAnswer);
+  if (synonymMatch > 0.8) {
+    return synonymMatch;
   }
   
   // Check if the student's answer is too simple compared to a complex correct answer
@@ -88,7 +82,7 @@ function escapeRegExp(string: string) {
 // Helper function to check for synonyms and translations
 // This would ideally use an external API but for demonstration we'll use
 // a simple list of known synonyms for common capitals and other answers
-async function checkSynonymsAndTranslations(studentAnswer: string, correctAnswer: string): Promise<number> {
+function checkSynonymsAndTranslations(studentAnswer: string, correctAnswer: string): number {
   // Known translations of city names
   const knownTranslations: Record<string, string[]> = {
     'helsinki': ['helsingfors'],
@@ -130,39 +124,19 @@ async function checkSynonymsAndTranslations(studentAnswer: string, correctAnswer
     }
   }
   
-  // Try to use the Supabase edge function for more advanced semantic matching
-  // This will call OpenAI's API to check for semantic equivalence
-  try {
-    const { data, error } = await supabase.functions.invoke('check-semantic-similarity', {
-      body: {
-        text1: correctAnswer,
-        text2: studentAnswer
-      }
-    });
-    
-    if (error) throw error;
-    
-    if (data && data.isCorrect) {
-      return 0.95; // High confidence match through AI
-    }
-    
-    return 0.4; // AI determined they are not semantically equivalent
-  } catch (error) {
-    console.error("Error calling semantic similarity function:", error);
-    // If error, fall back to string comparison
-    return compareTwoStrings(studentAnswer, correctAnswer);
-  }
+  // If no translation match, fall back to string comparison
+  return compareTwoStrings(studentAnswer, correctAnswer);
 }
 
 // Helper function to determine if an answer is correct based on threshold
-export const isAnswerCorrect = async (
+export const isAnswerCorrect = (
   studentAnswer: string, 
   correctAnswer: string, 
   similarityThreshold: number = 0.7,
   semanticMatching: boolean = true
-): Promise<boolean> => {
+): boolean => {
   if (semanticMatching) {
-    return await checkSemanticMatch(studentAnswer, correctAnswer) >= similarityThreshold;
+    return checkSemanticMatch(studentAnswer, correctAnswer) >= similarityThreshold;
   } else {
     // Fall back to regular string similarity
     return compareTwoStrings(

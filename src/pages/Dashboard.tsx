@@ -69,7 +69,8 @@ const Dashboard = () => {
           if (answersData) {
             // Process the answers and determine if they're correct
             const processedAnswers: StudentAnswer[] = answersData.map((ans: SupabaseStudentAnswer) => {
-              const isCorrect = questionObj ? isAnswerCorrect(
+              // Calculate if the answer is correct synchronously
+              const correct = questionObj ? isAnswerCorrect(
                 ans.answer, 
                 questionObj.answer, 
                 questionObj.similarityThreshold || 0.7,
@@ -82,7 +83,7 @@ const Dashboard = () => {
                 studentName: ans.student_name,
                 answer: ans.answer,
                 submittedAt: new Date(ans.submitted_at),
-                isCorrect
+                isCorrect: correct
               };
             });
             
