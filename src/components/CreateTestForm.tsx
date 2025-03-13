@@ -237,7 +237,8 @@ export const CreateTestForm = ({
               </TabsContent>
               
               <TabsContent value="new" className="mt-4">
-                <form onSubmit={handleCreateQuestion} className="space-y-4">
+                {/* Fix: We're using a div instead of a form here to avoid nesting forms, which was causing the issue */}
+                <div className="space-y-4">
                   <div>
                     <label htmlFor="questionText" className="text-sm font-medium">
                       Fråga
@@ -314,9 +315,10 @@ export const CreateTestForm = ({
                   </div>
                   
                   <Button 
-                    type="submit" 
+                    type="button" 
                     className="w-full"
                     disabled={isCreatingQuestion}
+                    onClick={handleCreateQuestion}
                   >
                     {isCreatingQuestion ? (
                       <>
@@ -330,7 +332,7 @@ export const CreateTestForm = ({
                       </>
                     )}
                   </Button>
-                </form>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
