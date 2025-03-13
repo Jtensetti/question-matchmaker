@@ -37,6 +37,7 @@ export type Database = {
           id: string
           semantic_matching: boolean | null
           similarity_threshold: number | null
+          teacher_id: string | null
           text: string
         }
         Insert: {
@@ -45,6 +46,7 @@ export type Database = {
           id?: string
           semantic_matching?: boolean | null
           similarity_threshold?: number | null
+          teacher_id?: string | null
           text: string
         }
         Update: {
@@ -53,6 +55,7 @@ export type Database = {
           id?: string
           semantic_matching?: boolean | null
           similarity_threshold?: number | null
+          teacher_id?: string | null
           text?: string
         }
         Relationships: []
@@ -140,18 +143,21 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          teacher_id: string | null
           title: string
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
+          teacher_id?: string | null
           title: string
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
+          teacher_id?: string | null
           title?: string
         }
         Relationships: []
