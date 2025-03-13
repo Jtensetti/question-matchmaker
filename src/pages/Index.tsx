@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Question, Test } from "@/types/question";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -57,16 +58,11 @@ const Index = () => {
 
   const fetchQuestions = async () => {
     try {
-      let query = supabase
+      // For teachers and admins, fetch all questions from the database
+      const { data, error } = await supabase
         .from('questions')
         .select('*')
         .order('created_at', { ascending: false });
-      
-      if (!isAdmin && teacherId) {
-        query = query.eq('teacher_id', teacherId);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -101,6 +97,8 @@ const Index = () => {
 
   const fetchTests = async () => {
     try {
+      // For tests, only fetch the ones created by the logged-in teacher
+      // Admin can see all tests
       let query = supabase
         .from('tests')
         .select('*')
@@ -519,7 +517,7 @@ const Index = () => {
             {isAdmin 
               ? "Administrera alla lärares frågor och tester"
               : isTeacher 
-                ? `Skapa och hantera dina frågor och tester${teacherName ? ` (${teacherName})` : ""}`
+                ? `Skapa och hantera dina tester${teacherName ? ` (${teacherName})` : ""} - Se och använd frågebanken`
                 : "Svara på frågor och testa dina kunskaper"}
           </p>
           <div className="flex justify-center space-x-2">
@@ -586,7 +584,7 @@ const Index = () => {
                 </TabsTrigger>
                 <TabsTrigger value="questions">
                   <FileQuestion className="h-4 w-4 mr-2" />
-                  Frågor
+                  Frågebank
                 </TabsTrigger>
               </TabsList>
               
@@ -619,7 +617,7 @@ const Index = () => {
                   </>
                 ) : (
                   <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Tester</h2>
+                    <h2 className="text-xl font-semibold">Dina tester</h2>
                     <Button 
                       onClick={() => setShowCreateTest(true)}
                       size="sm"
@@ -667,7 +665,13 @@ const Index = () => {
                 
                 <CreateQuestionForm onSubmit={handleCreateQuestion} />
                 <div className="space-y-4">
-                  <h2 className="text-xl font-semibold">Skapade frågor</h2>
+                  <h2 className="text-xl font-semibold">Frågebank</h2>
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-md mb-4">
+                    <p className="text-sm text-blue-700">
+                      Här ser du alla frågor i frågebanken. Du kan använda dessa i dina egna tester.
+                      Du kan bara redigera och ta bort frågor som du själv har skapat.
+                    </p>
+                  </div>
                   {questions.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground border rounded-md">
                       Inga frågor skapade ännu. Använd formuläret ovan för att skapa din första fråga!
@@ -679,7 +683,12 @@ const Index = () => {
                         question={question}
                         isTeacher={true}
                         isAdmin={isAdmin}
-                        onDeleteClick={() => confirmDeleteQuestion(question.id)}
+                        // Only allow deletion if admin or if the teacher is the creator
+                        onDeleteClick={
+                          isAdmin || question.teacherId === teacherId 
+                            ? () => confirmDeleteQuestion(question.id) 
+                            : undefined
+                        }
                       />
                     ))
                   )}

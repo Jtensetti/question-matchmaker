@@ -56,7 +56,7 @@ export const TeacherAuth = ({ onSuccess }: TeacherAuthProps) => {
       }
 
       // In a real app, we would use supabase auth for password handling
-      // For this demo, we'll use a simple check against the admin password
+      // For this demo, we'll use a simple check against the teacher password
       if (loginPassword !== "teacher123") {
         throw new Error("Ogiltigt lösenord");
       }
