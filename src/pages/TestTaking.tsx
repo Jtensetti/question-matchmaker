@@ -55,6 +55,7 @@ const TestTaking = () => {
             title: testData.title,
             description: testData.description || undefined,
             createdAt: new Date(testData.created_at),
+            teacherId: testData.teacher_id
           };
 
           setTest(test);

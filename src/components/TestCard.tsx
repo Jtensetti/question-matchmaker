@@ -41,6 +41,7 @@ export const TestCard = ({ test, questions, onUpdate, onDelete, isAdmin = false 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Generate an absolute URL for the test
   const shareLink = `${window.location.origin}/test/${test.id}`;
 
   const copyShareLink = () => {

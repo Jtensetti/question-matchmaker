@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Question, Test } from "@/types/question";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -51,7 +50,6 @@ const Index = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for saved teacher credentials in cookies
     const savedTeacherId = Cookies.get("teacherId");
     const savedTeacherEmail = Cookies.get("teacherEmail");
     const savedTeacherName = Cookies.get("teacherName");
@@ -489,7 +487,6 @@ const Index = () => {
   };
 
   const handleLogout = () => {
-    // Clear cookies
     Cookies.remove("teacherId");
     Cookies.remove("teacherEmail");
     Cookies.remove("teacherName");
@@ -555,7 +552,7 @@ const Index = () => {
               ? "Administrera alla lärares frågor och tester"
               : isTeacher 
                 ? `Skapa och hantera dina tester${teacherName ? ` (${teacherName})` : ""} - Se och använd frågebanken`
-                : "Svara på frågor och testa dina kunskaper"}
+                : "Svara på tester och öva dina kunskaper"}
           </p>
           <div className="flex justify-center space-x-2">
             {isTeacher ? (
@@ -764,20 +761,6 @@ const Index = () => {
                     </Card>
                   ))}
                 </div>
-              )}
-              
-              <h2 className="text-xl font-semibold mt-8">Individuella frågor</h2>
-              {questions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  Inga frågor tillgängliga ännu. Vänta på att din lärare lägger till några!
-                </div>
-              ) : (
-                questions.map((question) => (
-                  <QuestionCard
-                    key={question.id}
-                    question={question}
-                  />
-                ))
               )}
             </div>
           )}
