@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeQuestionType, isValidQuestionType } from "@/utils/questionTypeHelper";
 
@@ -15,13 +14,12 @@ export const updateQuestionType = async (
   gridColumns?: string[]
 ) => {
   try {
-    // Normalize the question type first, using our shared utility
+    // Normalize the question type to ensure consistency
     const normalizedType = normalizeQuestionType(questionType);
     
-    console.log("Updating question type, input vs normalized:", {
+    console.log("Updating question type:", {
       original: questionType,
-      normalized: normalizedType,
-      typeOfOriginal: typeof questionType
+      normalized: normalizedType
     });
     
     // Validate the normalized type
@@ -32,7 +30,7 @@ export const updateQuestionType = async (
       };
     }
     
-    // Validate inputs based on normalized question type
+    // Validate inputs based on question type
     if ((normalizedType === 'multiple-choice' || normalizedType === 'checkbox') && 
         (!options || options.length === 0)) {
       return { 
@@ -57,12 +55,8 @@ export const updateQuestionType = async (
       };
     }
     
-    // Force question_type to be stored as a plain string, not an object
-    const updateData: any = {};
-    
-    // Explicitly set question_type as a string literal
-    // This is crucial - we need to ensure it's stored as a string in the database
-    updateData.question_type = normalizedType;
+    // Prepare update data
+    const updateData: any = { question_type: normalizedType };
     
     // Only include properties that are relevant to the question type
     if (normalizedType === 'multiple-choice' || normalizedType === 'checkbox') {
@@ -79,16 +73,7 @@ export const updateQuestionType = async (
       updateData.grid_columns = gridColumns || [];
     }
     
-    console.log('Updating question type with data:', {
-      id: questionId, 
-      type: normalizedType, 
-      data: updateData,
-      dataType: typeof updateData.question_type
-    });
-    
-    // Explicitly check the structure before sending to Supabase
-    console.log('JSON.stringify of updateData:', JSON.stringify(updateData));
-    
+    // Update the question in the database
     const { error } = await supabase
       .from('questions')
       .update(updateData)
@@ -99,10 +84,7 @@ export const updateQuestionType = async (
     return { success: true };
   } catch (error) {
     console.error('Error updating question type:', error);
-    return { 
-      success: false, 
-      error 
-    };
+    return { success: false, error };
   }
 };
 

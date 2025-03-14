@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +16,7 @@ import {
   AlignLeft,
   AlignRight
 } from "lucide-react";
+import { normalizeQuestionType } from "@/utils/questionTypeHelper";
 
 interface CreateQuestionFormProps {
   onSubmit: (
@@ -40,6 +40,8 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
   const [similarityThreshold, setSimilarityThreshold] = useState(0.7); // Default 70%
   const [semanticMatching, setSemanticMatching] = useState(true); // Default to semantic matching
   const [showAdvanced, setShowAdvanced] = useState(false);
+  
+  // We start with a simple text question by default
   const [questionType, setQuestionType] = useState("open_ended");
   
   // Options for multiple choice and checkbox questions
@@ -177,27 +179,29 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
     const useSemanticMatching = 
       (questionType === "open_ended" || questionType === "fill_in_blank") && semanticMatching;
     
-    // Map the question type to the standardized format
-    let normalizedQuestionType = questionType;
+    // Map the internal question type to the standardized format
+    let mappedType = "";
     switch (questionType) {
       case "open_ended":
-        normalizedQuestionType = "text";
+        mappedType = "text";
         break;
       case "multiple_choice":
-        normalizedQuestionType = "multiple-choice";
+        mappedType = "multiple-choice";
         break;
       case "checkboxes":
-        normalizedQuestionType = "checkbox";
+        mappedType = "checkbox";
         break;
       case "grid_matching":
-        normalizedQuestionType = "grid";
+        mappedType = "grid";
         break;
       case "fill_in_blank":
-        normalizedQuestionType = "text";
+        mappedType = "text";
         break;
       case "rating":
-        normalizedQuestionType = "rating";
+        mappedType = "rating";
         break;
+      default:
+        mappedType = "text";
     }
     
     // Create the answer string for rating questions
@@ -205,14 +209,18 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
       ? ratingCorrect.toString()
       : answer;
     
-    console.log("Submitting question with normalized type:", normalizedQuestionType);
+    console.log("Submitting question with type:", {
+      internal: questionType,
+      mapped: mappedType,
+      hasOptions: filteredOptions ? filteredOptions.length : 0
+    });
 
     onSubmit(
       question, 
       finalAnswer, 
       similarityThreshold, 
       useSemanticMatching,
-      normalizedQuestionType,
+      mappedType,
       filteredOptions,
       filteredGridRows,
       filteredGridColumns,

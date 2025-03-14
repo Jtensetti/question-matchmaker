@@ -3,126 +3,59 @@
  * Utility functions for handling question types
  */
 
+// The list of supported question types
+const VALID_QUESTION_TYPES = ["text", "multiple-choice", "checkbox", "grid", "rating"];
+
 /**
  * Normalizes a question type value from various possible formats
  * into a consistent string value
  */
 export function normalizeQuestionType(questionType: any): string {
+  console.log("Normalizing question type:", questionType);
+  
   // If it's undefined or null, return the default "text"
   if (questionType === undefined || questionType === null) {
-    console.log("Question type is null or undefined, defaulting to 'text'");
     return "text";
   }
   
-  // Log for debugging
-  console.log("normalizeQuestionType received:", {
-    value: questionType,
-    type: typeof questionType
-  });
-  
-  // If it's already a string, standardize the format
+  // If it's a string, standardize it
   if (typeof questionType === "string") {
     return standardizeQuestionType(questionType);
   }
   
-  // If it's an object with a value property (like from some form libraries or database)
+  // Handle database objects with various structures
   if (typeof questionType === "object") {
-    console.log("Question type is an object:", questionType);
-    
-    // Database case - Object with _type and value properties containing "undefined" strings
-    // This is a specific data pattern observed in the DB results
-    if ((questionType.value === "undefined" || questionType._type === "undefined")) {
-      // First try to check if there's a direct question_type property 
-      if (questionType.question_type && typeof questionType.question_type === "string") {
-        console.log("Found question_type property:", questionType.question_type);
-        return standardizeQuestionType(questionType.question_type);
-      }
-      
-      // If we're here, we need to look for other clues in the object
-      // Get most likely type based on object properties
-      if (questionType.options && Array.isArray(questionType.options) && questionType.options.length > 0 &&
-          questionType.options[0] !== "undefined") {
-        console.log("Inferring type from options array");
-        return "multiple-choice";
-      }
-      
-      if (questionType.rating_min && questionType.rating_max) {
-        console.log("Inferring type from rating properties");
-        return "rating";
-      }
-      
-      if (questionType.grid_rows && questionType.grid_columns) {
-        console.log("Inferring type from grid properties");
-        return "grid";
-      }
-      
-      // If there are options in the parent object, it's likely a multiple choice or checkbox
-      if (typeof questionType === 'object' && 
-          questionType.parent && 
-          questionType.parent.options && 
-          Array.isArray(questionType.parent.options) && 
-          questionType.parent.options.length > 0) {
-        console.log("Found options in parent object:", questionType.parent.options);
-        return "multiple-choice";
-      }
-      
-      // Default fallback for database objects with undefined type
-      console.log("Object has undefined value - using default type");
-      return "multiple-choice";
-    }
-    
-    // Standard property checks for string values
-    if (questionType.value && typeof questionType.value === "string" && 
-        questionType.value !== "undefined") {
-      return standardizeQuestionType(questionType.value);
-    }
-    
-    if (questionType.type && typeof questionType.type === "string" && 
-        questionType.type !== "undefined") {
+    // First check for a straightforward type property
+    if (questionType.type && typeof questionType.type === "string") {
       return standardizeQuestionType(questionType.type);
     }
     
-    if (questionType._type && typeof questionType._type === "string" && 
-        questionType._type !== "undefined") {
-      return standardizeQuestionType(questionType._type);
+    if (questionType.question_type && typeof questionType.question_type === "string") {
+      return standardizeQuestionType(questionType.question_type);
     }
     
-    // Check other common properties
-    if (questionType.questionType && typeof questionType.questionType === "string") {
-      return standardizeQuestionType(questionType.questionType);
+    // Check for properties that indicate the question type
+    if (questionType.options && Array.isArray(questionType.options) && questionType.options.length > 0) {
+      // If there are options, it's either multiple-choice or checkbox
+      // Default to multiple-choice
+      return "multiple-choice";
     }
     
-    // Check if any property contains a string value that might be a valid type
-    for (const key in questionType) {
-      if (typeof questionType[key] === "string" && 
-          questionType[key] !== "undefined" &&
-          isValidQuestionType(standardizeQuestionType(questionType[key]))) {
-        return standardizeQuestionType(questionType[key]);
-      }
+    if (questionType.rating_min !== undefined && questionType.rating_max !== undefined) {
+      return "rating";
     }
     
-    // Try to use JSON.stringify to get more information
-    try {
-      const stringified = JSON.stringify(questionType);
-      console.log("Stringified question type:", stringified);
-      
-      // If it's a simple string wrapped in quotes in the JSON, extract it
-      if (stringified && stringified.startsWith('"') && stringified.endsWith('"')) {
-        return standardizeQuestionType(stringified.substring(1, stringified.length - 1));
-      }
-    } catch (e) {
-      console.error("Error stringifying question type:", e);
+    if (questionType.grid_rows && questionType.grid_columns) {
+      return "grid";
     }
   }
   
-  // Default fallback to text
-  console.log("Couldn't normalize question type, defaulting to 'text':", questionType);
+  // Default fallback
   return "text";
 }
 
 /**
  * Standardize question type strings to a consistent format
- * This handles variations like "multiple_choice" vs "multiple-choice"
  */
 function standardizeQuestionType(type: string): string {
   if (!type) return "text";
@@ -154,13 +87,12 @@ function standardizeQuestionType(type: string): string {
  */
 export function isValidQuestionType(type: string): boolean {
   const standardizedType = standardizeQuestionType(type);
-  const validTypes = ["text", "multiple-choice", "checkbox", "grid", "rating"];
-  return validTypes.includes(standardizedType);
+  return VALID_QUESTION_TYPES.includes(standardizedType);
 }
 
 /**
  * Returns the list of valid question types
  */
 export function getValidQuestionTypes(): string[] {
-  return ["text", "multiple-choice", "checkbox", "grid", "rating"];
+  return [...VALID_QUESTION_TYPES];
 }
