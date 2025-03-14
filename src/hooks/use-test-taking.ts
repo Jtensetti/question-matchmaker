@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -19,7 +18,6 @@ export const useTestTaking = (testId: string | undefined) => {
   const [captchaQuestion, setCaptchaQuestion] = useState("");
   const [answers, setAnswers] = useState<{questionId: string, answer: string}[]>([]);
   
-  // Simple captcha generation
   const generateCaptcha = () => {
     const num1 = Math.floor(Math.random() * 10);
     const num2 = Math.floor(Math.random() * 10);
@@ -34,7 +32,6 @@ export const useTestTaking = (testId: string | undefined) => {
       if (!testId) return;
       
       try {
-        // Fetch test data
         const { data: testData, error: testError } = await supabase
           .from('tests')
           .select('*')
@@ -54,7 +51,6 @@ export const useTestTaking = (testId: string | undefined) => {
 
           setTest(test);
           
-          // Fetch questions for this test - Updated to include all question fields
           const { data: testQuestionsData, error: testQuestionsError } = await supabase
             .from('test_questions')
             .select(`
@@ -74,7 +70,8 @@ export const useTestTaking = (testId: string | undefined) => {
                 grid_rows,
                 grid_columns,
                 rating_min,
-                rating_max
+                rating_max,
+                allow_multiple_selections
               )
             `)
             .eq('test_id', testId)
@@ -95,7 +92,8 @@ export const useTestTaking = (testId: string | undefined) => {
               gridRows: tq.questions.grid_rows || [],
               gridColumns: tq.questions.grid_columns || [],
               ratingMin: tq.questions.rating_min,
-              ratingMax: tq.questions.rating_max
+              ratingMax: tq.questions.rating_max,
+              allowMultipleSelections: tq.questions.allow_multiple_selections || false
             }));
             
             setTestQuestions(questions);
@@ -123,7 +121,6 @@ export const useTestTaking = (testId: string | undefined) => {
     fetchTest();
   }, [testId, navigate]);
 
-  // Initialize answer based on question type when changing questions
   useEffect(() => {
     const question = testQuestions[currentQuestionIndex];
     if (question) {
@@ -135,7 +132,11 @@ export const useTestTaking = (testId: string | undefined) => {
           setAnswer({ row: "", column: "" });
           break;
         case "multiple-choice":
-          setAnswer("");
+          if (question.allowMultipleSelections) {
+            setAnswer([]);
+          } else {
+            setAnswer("");
+          }
           break;
         case "text":
         default:
@@ -149,7 +150,6 @@ export const useTestTaking = (testId: string | undefined) => {
     setNameEntered(true);
   };
 
-  // Validate answer based on question type
   const validateAnswer = (question: Question): boolean => {
     if (question.questionType === "text" && typeof answer === "string" && !answer.trim()) {
       toast({
@@ -206,22 +206,33 @@ export const useTestTaking = (testId: string | undefined) => {
         break;
       
       case "multiple-choice":
-        if (typeof answer !== "string" || !answer) {
-          toast({
-            title: "Invalid choice",
-            description: "Please select one of the available options.",
-            variant: "destructive",
-          });
-          return false;
-        }
-        
-        if (!question.options?.includes(answer as string)) {
-          toast({
-            title: "Invalid choice",
-            description: "Please select one of the available options.",
-            variant: "destructive",
-          });
-          return false;
+        if (question.allowMultipleSelections) {
+          if (!Array.isArray(answer) || answer.length === 0) {
+            toast({
+              title: "Selection required",
+              description: "Please select at least one option.",
+              variant: "destructive",
+            });
+            return false;
+          }
+        } else {
+          if (typeof answer !== "string" || !answer) {
+            toast({
+              title: "Invalid choice",
+              description: "Please select one of the available options.",
+              variant: "destructive",
+            });
+            return false;
+          }
+          
+          if (!question.options?.includes(answer as string)) {
+            toast({
+              title: "Invalid choice",
+              description: "Please select one of the available options.",
+              variant: "destructive",
+            });
+            return false;
+          }
         }
         break;
     }
@@ -235,26 +246,24 @@ export const useTestTaking = (testId: string | undefined) => {
     setSubmitting(true);
     
     try {
-      // Convert the answer to string format for storage
       let stringifiedAnswer: string;
       
-      if (typeof answer === "object") {
+      if (Array.isArray(answer)) {
+        stringifiedAnswer = JSON.stringify(answer);
+      } else if (typeof answer === "object") {
         stringifiedAnswer = JSON.stringify(answer);
       } else {
         stringifiedAnswer = String(answer);
       }
       
-      // Store answer for final submission
       setAnswers(prev => [...prev, {
         questionId: testQuestions[currentQuestionIndex].id,
         answer: stringifiedAnswer
       }]);
       
-      // Move to next question
       if (currentQuestionIndex < testQuestions.length - 1) {
         setCurrentQuestionIndex(prev => prev + 1);
       } else {
-        // Submit all answers to Supabase
         const allAnswers = [...answers, {
           questionId: testQuestions[currentQuestionIndex].id,
           answer: stringifiedAnswer
@@ -280,7 +289,6 @@ export const useTestTaking = (testId: string | undefined) => {
           description: "All your answers have been submitted successfully.",
         });
         
-        // Redirect to thank you page
         navigate(`/test-thank-you/${test.id}`);
       }
     } catch (error) {

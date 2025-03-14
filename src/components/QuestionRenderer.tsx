@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Question, QuestionAnswer, GridAnswer, RatingAnswer } from "@/types/question";
+import { Question, QuestionAnswer, GridAnswer, RatingAnswer, MultipleChoiceAnswer } from "@/types/question";
 import { TextQuestion } from "./question-types/TextQuestion";
 import { MultipleChoiceQuestion } from "./question-types/MultipleChoiceQuestion";
 import { RatingQuestion } from "./question-types/RatingQuestion";
@@ -40,10 +40,22 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
             return { row: "", column: "" };
           }
         }
-        return (typeof value === 'object' && value !== null) ? 
+        return (typeof value === 'object' && value !== null && !Array.isArray(value)) ? 
           value as GridAnswer : { row: "", column: "" };
         
       case "multiple-choice":
+        if (question.allowMultipleSelections) {
+          // Handle multiple selections
+          if (typeof value === 'string' && value.startsWith('[')) {
+            try {
+              return JSON.parse(value) as string[];
+            } catch (e) {
+              return [] as string[];
+            }
+          }
+          return Array.isArray(value) ? value : [];
+        }
+        // Handle single selection
         return typeof value === 'string' ? value : '';
         
       case "text":
@@ -59,7 +71,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       return (
         <MultipleChoiceQuestion 
           question={question} 
-          value={typedValue as string} 
+          value={typedValue as MultipleChoiceAnswer} 
           onChange={(newValue) => onChange(newValue)} 
           disabled={disabled} 
         />

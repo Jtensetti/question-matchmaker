@@ -13,6 +13,7 @@ export interface Question {
   gridColumns?: string[];
   ratingMin?: number;
   ratingMax?: number;
+  allowMultipleSelections?: boolean;
 }
 
 export interface StudentAnswer {
@@ -36,7 +37,7 @@ export interface Test {
 
 // New type definitions for strongly typed question answers
 export type RatingAnswer = number;
-export type MultipleChoiceAnswer = string;
+export type MultipleChoiceAnswer = string | string[]; // Updated to support multiple selections
 export type TextAnswer = string;
 export type GridAnswer = { row: string; column: string };
 
