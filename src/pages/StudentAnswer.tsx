@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -27,7 +26,6 @@ const StudentAnswer = () => {
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   const [captchaQuestion, setCaptchaQuestion] = useState("");
   
-  // Simple captcha generation
   const generateCaptcha = () => {
     const num1 = Math.floor(Math.random() * 10);
     const num2 = Math.floor(Math.random() * 10);
@@ -44,6 +42,8 @@ const StudentAnswer = () => {
       try {
         console.log("Fetching question with ID:", questionId);
         
+        console.log(`Running query: supabase.from('questions').select('*').eq('id', '${questionId}').single()`);
+        
         const { data, error } = await supabase
           .from('questions')
           .select('*')
@@ -56,10 +56,10 @@ const StudentAnswer = () => {
         }
 
         console.log("Raw question data from database:", data);
+        console.log("Question type from DB:", data?.question_type);
+        console.log("Question type type:", data?.question_type ? typeof data.question_type : 'undefined');
 
         if (data) {
-          // FIX: Use nullish coalescing (??) instead of logical OR (||)
-          // This ensures only null/undefined values are replaced with 'text'
           const questionType = data.question_type ?? 'text';
           console.log("Extracted question type:", questionType);
           
@@ -89,12 +89,10 @@ const StudentAnswer = () => {
           
           setQuestion(fetchedQuestion);
           
-          // Set initial rating value if applicable
           if (fetchedQuestion.questionType === 'rating' && fetchedQuestion.ratingMin !== undefined) {
             setRatingValue(fetchedQuestion.ratingMin);
           }
           
-          // Set initial option if multiple choice
           if (fetchedQuestion.questionType === 'multiple-choice' && 
               Array.isArray(fetchedQuestion.options) && 
               fetchedQuestion.options.length > 0) {
@@ -124,14 +122,12 @@ const StudentAnswer = () => {
     fetchQuestion();
   }, [questionId, navigate]);
 
-  // Convert grid selections to string format for submission
   const gridSelectionsToString = () => {
     return Object.entries(gridSelections)
       .map(([row, col]) => `${row}:${col}`)
       .join(',');
   };
 
-  // Handle grid cell selection
   const handleGridCellSelect = (row: string, col: string) => {
     setGridSelections(prev => ({
       ...prev,
@@ -151,22 +147,27 @@ const StudentAnswer = () => {
       return;
     }
     
-    // Get answer based on question type
     let answer = "";
+    
+    console.log("Preparing to submit answer for question type:", question.questionType);
     
     switch (question.questionType) {
       case "multiple-choice":
         answer = selectedOption;
+        console.log("Submitting multiple-choice answer:", answer);
         break;
       case "rating":
         answer = ratingValue.toString();
+        console.log("Submitting rating answer:", answer);
         break;
       case "grid":
         answer = gridSelectionsToString();
+        console.log("Submitting grid answer:", answer);
         break;
       case "text":
       default:
         answer = textAnswer;
+        console.log("Submitting text answer:", answer);
         break;
     }
     
@@ -200,7 +201,6 @@ const StudentAnswer = () => {
         answer
       });
       
-      // Store the student answer in the database
       const { error } = await supabase
         .from('student_answers')
         .insert([
@@ -218,7 +218,6 @@ const StudentAnswer = () => {
         description: "Your answer has been submitted successfully.",
       });
       
-      // Redirect to a thank you page or show completion message
       navigate(`/thank-you/${question.id}`);
       
     } catch (error) {
@@ -233,7 +232,6 @@ const StudentAnswer = () => {
     }
   };
 
-  // Render the appropriate input based on question type
   const renderQuestionInput = () => {
     if (!question) return null;
     
