@@ -52,7 +52,10 @@ const StudentAnswer = () => {
             createdAt: new Date(data.created_at),
             similarityThreshold: data.similarity_threshold || 0.7,
             semanticMatching: data.semantic_matching !== false,
-            questionType: data.question_type,
+            questionType: data.question_type || 'text',
+            options: data.options,
+            gridRows: data.grid_rows,
+            gridColumns: data.grid_columns,
             ratingMin: data.rating_min,
             ratingMax: data.rating_max,
             ratingCorrect: parseInt(data.answer)

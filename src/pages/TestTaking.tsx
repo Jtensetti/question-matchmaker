@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
@@ -72,6 +73,9 @@ const TestTaking = () => {
                 similarity_threshold,
                 semantic_matching,
                 question_type,
+                options,
+                grid_rows,
+                grid_columns,
                 rating_min,
                 rating_max
               )
@@ -89,7 +93,10 @@ const TestTaking = () => {
               createdAt: new Date(tq.questions.created_at),
               similarityThreshold: tq.questions.similarity_threshold || 0.7,
               semanticMatching: tq.questions.semantic_matching !== false,
-              questionType: tq.questions.question_type,
+              questionType: tq.questions.question_type || 'text',
+              options: tq.questions.options,
+              gridRows: tq.questions.grid_rows,
+              gridColumns: tq.questions.grid_columns,
               ratingMin: tq.questions.rating_min,
               ratingMax: tq.questions.rating_max,
               ratingCorrect: tq.questions.answer ? parseInt(tq.questions.answer) : undefined
