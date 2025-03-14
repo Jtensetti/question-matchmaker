@@ -123,21 +123,80 @@ export const useTestTaking = (testId: string | undefined) => {
     fetchTest();
   }, [testId, navigate]);
 
+  // Reset answer when changing questions
+  useEffect(() => {
+    setAnswer("");
+  }, [currentQuestionIndex]);
+
   const handleNameSubmit = () => {
     setNameEntered(true);
   };
 
-  const handleAnswerSubmit = async () => {
-    if (!test || !testQuestions[currentQuestionIndex]) return;
-    
+  // Validate answer based on question type
+  const validateAnswer = (question: Question): boolean => {
     if (!answer.trim()) {
       toast({
         title: "Answer required",
         description: "Please provide an answer to the question.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
+
+    switch (question.questionType) {
+      case "rating":
+        const ratingValue = parseInt(answer);
+        const min = question.ratingMin ?? 1;
+        const max = question.ratingMax ?? 10;
+        
+        if (isNaN(ratingValue) || ratingValue < min || ratingValue > max) {
+          toast({
+            title: "Invalid rating",
+            description: `Please select a rating between ${min} and ${max}.`,
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+      
+      case "grid":
+        try {
+          const gridAnswer = JSON.parse(answer);
+          if (!gridAnswer.row || !gridAnswer.column) {
+            toast({
+              title: "Incomplete selection",
+              description: "Please select both a row and column.",
+              variant: "destructive",
+            });
+            return false;
+          }
+        } catch (e) {
+          toast({
+            title: "Invalid selection",
+            description: "Please make a valid grid selection.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+      
+      case "multiple-choice":
+        if (!question.options?.includes(answer)) {
+          toast({
+            title: "Invalid choice",
+            description: "Please select one of the available options.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+    }
+
+    return true;
+  };
+
+  const handleAnswerSubmit = async () => {
+    if (!test || !testQuestions[currentQuestionIndex]) return;
     
     setSubmitting(true);
     
@@ -212,6 +271,7 @@ export const useTestTaking = (testId: string | undefined) => {
     expectedCaptchaAnswer,
     generateCaptcha,
     handleNameSubmit,
-    handleAnswerSubmit
+    handleAnswerSubmit,
+    validateAnswer
   };
 };

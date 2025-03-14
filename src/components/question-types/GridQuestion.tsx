@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Question } from "@/types/question";
 
@@ -31,6 +30,18 @@ export const GridQuestion: React.FC<GridQuestionProps> = ({
     }
   });
   
+  // Ensure selectedCell stays in sync with external value changes
+  useEffect(() => {
+    try {
+      if (value) {
+        const parsed = JSON.parse(value);
+        setSelectedCell(parsed);
+      }
+    } catch (e) {
+      // If parsing fails, keep current state
+    }
+  }, [value]);
+  
   const handleRowChange = (row: string) => {
     const newSelection = { ...selectedCell, row };
     setSelectedCell(newSelection);
@@ -39,6 +50,15 @@ export const GridQuestion: React.FC<GridQuestionProps> = ({
   
   const handleColumnChange = (column: string) => {
     const newSelection = { ...selectedCell, column };
+    setSelectedCell(newSelection);
+    onChange(JSON.stringify(newSelection));
+  };
+  
+  // Function to handle direct cell selection from the grid
+  const handleCellClick = (row: string, column: string) => {
+    if (disabled) return;
+    
+    const newSelection = { row, column };
     setSelectedCell(newSelection);
     onChange(JSON.stringify(newSelection));
   };
@@ -105,9 +125,13 @@ export const GridQuestion: React.FC<GridQuestionProps> = ({
                 <tr key={i} className={i % 2 ? "bg-muted/20" : ""}>
                   <td className="p-2 font-medium">{row}</td>
                   {columns.map((column, j) => (
-                    <td key={j} className="p-2 text-center">
+                    <td 
+                      key={j} 
+                      className="p-2 text-center"
+                      onClick={() => handleCellClick(row, column)}
+                    >
                       <div 
-                        className={`w-4 h-4 mx-auto rounded-full ${
+                        className={`w-4 h-4 mx-auto rounded-full cursor-pointer ${
                           selectedCell.row === row && selectedCell.column === column
                             ? "bg-primary"
                             : "bg-muted"

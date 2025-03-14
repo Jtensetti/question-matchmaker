@@ -18,6 +18,8 @@ export const RatingQuestion: React.FC<RatingQuestionProps> = ({
 }) => {
   const min = question.ratingMin ?? 1;
   const max = question.ratingMax ?? 10;
+  
+  // Parse the string value to number for the slider
   const currentValue = value ? parseInt(value) : min;
   
   return (

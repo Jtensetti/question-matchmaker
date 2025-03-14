@@ -26,7 +26,8 @@ const TestTaking = () => {
     expectedCaptchaAnswer,
     generateCaptcha,
     handleNameSubmit,
-    handleAnswerSubmit
+    handleAnswerSubmit,
+    validateAnswer
   } = useTestTaking(testId);
 
   if (loading) {
@@ -72,7 +73,11 @@ const TestTaking = () => {
       answer={answer}
       setAnswer={setAnswer}
       submitting={submitting}
-      handleAnswerSubmit={handleAnswerSubmit}
+      handleAnswerSubmit={() => {
+        if (validateAnswer(currentQuestion)) {
+          handleAnswerSubmit();
+        }
+      }}
     />
   );
 };
