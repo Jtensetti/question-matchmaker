@@ -213,6 +213,8 @@ const StudentAnswer = () => {
   const renderQuestionInput = () => {
     if (!question) return null;
     
+    console.log("Rendering input for question type:", question.questionType);
+    
     switch (question.questionType) {
       case "rating":
         return renderRatingScale();
@@ -273,7 +275,14 @@ const StudentAnswer = () => {
   };
   
   const renderRatingScale = () => {
-    if (!question?.ratingMin || !question?.ratingMax) return null;
+    if (!question?.ratingMin || !question?.ratingMax) {
+      console.log("Missing rating min/max:", question);
+      return (
+        <div className="p-4 bg-red-100 rounded-md">
+          <p>This question is missing rating scale information.</p>
+        </div>
+      );
+    }
     
     const min = question.ratingMin;
     const max = question.ratingMax;
@@ -311,7 +320,14 @@ const StudentAnswer = () => {
   };
   
   const renderMultipleChoice = () => {
-    if (!question?.options || question.options.length === 0) return null;
+    if (!question?.options || question.options.length === 0) {
+      console.log("Missing options for multiple choice:", question);
+      return (
+        <div className="p-4 bg-red-100 rounded-md">
+          <p>This multiple choice question is missing options.</p>
+        </div>
+      );
+    }
     
     return (
       <RadioGroup 
@@ -332,7 +348,14 @@ const StudentAnswer = () => {
   };
   
   const renderCheckboxes = () => {
-    if (!question?.options || question.options.length === 0) return null;
+    if (!question?.options || question.options.length === 0) {
+      console.log("Missing options for checkbox:", question);
+      return (
+        <div className="p-4 bg-red-100 rounded-md">
+          <p>This checkbox question is missing options.</p>
+        </div>
+      );
+    }
     
     return (
       <div className="space-y-3">
@@ -365,7 +388,12 @@ const StudentAnswer = () => {
   const renderGrid = () => {
     if (!question?.gridRows || !question?.gridColumns || 
         question.gridRows.length === 0 || question.gridColumns.length === 0) {
-      return null;
+      console.log("Missing grid rows/columns:", question);
+      return (
+        <div className="p-4 bg-red-100 rounded-md">
+          <p>This grid question is missing grid configuration.</p>
+        </div>
+      );
     }
     
     return (
@@ -454,7 +482,7 @@ const StudentAnswer = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="p-4 bg-muted rounded-md">
-              <h2 className="text-xl font-semibold mb-2">{question.text}</h2>
+              <h2 className="text-xl font-semibold mb-2">{question?.text}</h2>
             </div>
             
             <div className="space-y-4">
