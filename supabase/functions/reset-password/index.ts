@@ -125,7 +125,7 @@ serve(async (req) => {
     console.log('Attempting to send email to:', email)
     
     try {
-      const data = await resend.emails.send({
+      await resend.emails.send({
         from: 'Lärarportalen <onboarding@resend.dev>',
         to: [email],
         subject: 'Återställ ditt lösenord',
@@ -148,7 +148,7 @@ serve(async (req) => {
         `
       });
       
-      console.log('Password reset email sent successfully', data)
+      console.log('Password reset email sent successfully')
     } catch (emailErr) {
       console.error('Caught error while sending email:', emailErr)
       throw new Error('Email sending failed: ' + (emailErr.message || 'Unknown error'))
