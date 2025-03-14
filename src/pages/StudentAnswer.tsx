@@ -58,14 +58,19 @@ const StudentAnswer = () => {
         console.log("Raw question data from database:", data);
 
         if (data) {
+          // FIX: Use nullish coalescing (??) instead of logical OR (||)
+          // This ensures only null/undefined values are replaced with 'text'
+          const questionType = data.question_type ?? 'text';
+          console.log("Extracted question type:", questionType);
+          
           const fetchedQuestion: Question = {
             id: data.id,
             text: data.text,
             answer: data.answer,
             createdAt: new Date(data.created_at),
-            similarityThreshold: data.similarity_threshold || 0.7,
+            similarityThreshold: data.similarity_threshold ?? 0.7,
             semanticMatching: data.semantic_matching !== false,
-            questionType: (data.question_type as QuestionType) || 'text',
+            questionType: questionType as QuestionType,
             options: data.options,
             ratingMin: data.rating_min,
             ratingMax: data.rating_max,
@@ -87,6 +92,13 @@ const StudentAnswer = () => {
           // Set initial rating value if applicable
           if (fetchedQuestion.questionType === 'rating' && fetchedQuestion.ratingMin !== undefined) {
             setRatingValue(fetchedQuestion.ratingMin);
+          }
+          
+          // Set initial option if multiple choice
+          if (fetchedQuestion.questionType === 'multiple-choice' && 
+              Array.isArray(fetchedQuestion.options) && 
+              fetchedQuestion.options.length > 0) {
+            setSelectedOption(fetchedQuestion.options[0]);
           }
         } else {
           console.log("No question data returned for ID:", questionId);
