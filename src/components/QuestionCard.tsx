@@ -10,13 +10,15 @@ import {
   XCircle, 
   Trash2, 
   AlignLeft, 
-  AlignRight 
+  AlignRight,
+  Info
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { checkSemanticMatch, checkAnswerCorrectAsync } from "@/utils/semanticMatching";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface QuestionCardProps {
   question: Question;
@@ -42,6 +44,18 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [gridAnswers, setGridAnswers] = useState<Record<string, string>>({});
+
+  // Debug the question object
+  console.log("Question in QuestionCard:", {
+    id: question.id,
+    text: question.text,
+    questionType: question.questionType,
+    options: question.options,
+    ratingMin: question.ratingMin,
+    ratingMax: question.ratingMax,
+    gridRows: question.gridRows,
+    gridColumns: question.gridColumns
+  });
 
   const handleSubmitAnswer = async () => {
     if (question.questionType === "rating") {
@@ -298,7 +312,24 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   };
   
   const renderRatingScale = () => {
-    if (!question.ratingMin || !question.ratingMax) return null;
+    if (!question.ratingMin || !question.ratingMax) {
+      console.log("Missing rating configuration:", { ratingMin: question.ratingMin, ratingMax: question.ratingMax });
+      
+      return (
+        <div className="space-y-2 mt-4 p-3 border border-amber-300 bg-amber-50 rounded-md">
+          <div className="flex items-center gap-2 text-amber-600">
+            <Info className="h-4 w-4" />
+            <p className="text-sm">Denna frågetyp saknar korrekt konfiguration.</p>
+          </div>
+          <Input
+            value={userAnswer}
+            onChange={e => setUserAnswer(e.target.value)}
+            placeholder="Ditt svar..."
+            disabled={isSubmitted}
+          />
+        </div>
+      );
+    }
     
     const min = question.ratingMin;
     const max = question.ratingMax;
@@ -360,7 +391,24 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   };
   
   const renderMultipleChoice = () => {
-    if (!question.options || question.options.length === 0) return null;
+    if (!question.options || question.options.length === 0) {
+      console.log("Missing multiple choice options:", question.options);
+      
+      return (
+        <div className="space-y-2 mt-4 p-3 border border-amber-300 bg-amber-50 rounded-md">
+          <div className="flex items-center gap-2 text-amber-600">
+            <Info className="h-4 w-4" />
+            <p className="text-sm">Denna flervalsfråga saknar alternativ.</p>
+          </div>
+          <Input
+            value={userAnswer}
+            onChange={e => setUserAnswer(e.target.value)}
+            placeholder="Ditt svar..."
+            disabled={isSubmitted}
+          />
+        </div>
+      );
+    }
     
     return (
       <RadioGroup 
@@ -388,7 +436,24 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   };
   
   const renderCheckboxes = () => {
-    if (!question.options || question.options.length === 0) return null;
+    if (!question.options || question.options.length === 0) {
+      console.log("Missing checkbox options:", question.options);
+      
+      return (
+        <div className="space-y-2 mt-4 p-3 border border-amber-300 bg-amber-50 rounded-md">
+          <div className="flex items-center gap-2 text-amber-600">
+            <Info className="h-4 w-4" />
+            <p className="text-sm">Denna kryssrutsfråga saknar alternativ.</p>
+          </div>
+          <Input
+            value={userAnswer}
+            onChange={e => setUserAnswer(e.target.value)}
+            placeholder="Ditt svar..."
+            disabled={isSubmitted}
+          />
+        </div>
+      );
+    }
     
     // Convert answer to array for comparison
     const correctOptions = question.answer.split(",").map(opt => opt.trim());
@@ -432,7 +497,26 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const renderGrid = () => {
     if (!question.gridRows || !question.gridColumns || 
         question.gridRows.length === 0 || question.gridColumns.length === 0) {
-      return null;
+      
+      console.log("Missing grid configuration:", { 
+        gridRows: question.gridRows, 
+        gridColumns: question.gridColumns 
+      });
+      
+      return (
+        <div className="space-y-2 mt-4 p-3 border border-amber-300 bg-amber-50 rounded-md">
+          <div className="flex items-center gap-2 text-amber-600">
+            <Info className="h-4 w-4" />
+            <p className="text-sm">Denna rutnätsfråga saknar korrekt konfiguration.</p>
+          </div>
+          <Input
+            value={userAnswer}
+            onChange={e => setUserAnswer(e.target.value)}
+            placeholder="Ditt svar..."
+            disabled={isSubmitted}
+          />
+        </div>
+      );
     }
     
     return (
@@ -511,6 +595,39 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     );
   };
 
+  // Helper function to render the appropriate question input based on type
+  const renderQuestionInput = () => {
+    switch (question.questionType) {
+      case "rating":
+        return renderRatingScale();
+      case "multiple-choice":
+        return renderMultipleChoice();
+      case "checkbox":
+        return renderCheckboxes();
+      case "grid":
+        return renderGrid();
+      case "text":
+      default:
+        const fillinBlanks = renderFillinBlanks();
+        if (fillinBlanks) return fillinBlanks;
+        
+        return (
+          <Input
+            value={userAnswer}
+            onChange={e => setUserAnswer(e.target.value)}
+            placeholder="Ditt svar..."
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmitAnswer();
+              }
+            }}
+            disabled={isSubmitted}
+          />
+        );
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardContent className="pt-6">
@@ -532,14 +649,38 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 Korrekt värde: {question.answer} (Min: {question.ratingMin}, Max: {question.ratingMax})
               </p>
             )}
+            
+            {(isTeacher || isAdmin) && (
+              <div className="flex items-center mt-2 text-xs text-muted-foreground">
+                <span className="mr-2">Frågetyp: {question.questionType || "text"}</span>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Info className="h-3.5 w-3.5 inline cursor-help text-muted-foreground/70" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px] p-4">
+                      <p className="font-semibold mb-1">Frågedetaljer:</p>
+                      <ul className="list-disc pl-4 space-y-1">
+                        <li>ID: {question.id}</li>
+                        <li>Typ: {question.questionType || "text"}</li>
+                        {question.options && <li>Alternativ: {question.options.join(", ")}</li>}
+                        {question.ratingMin && <li>Min: {question.ratingMin}</li>}
+                        {question.ratingMax && <li>Max: {question.ratingMax}</li>}
+                        {question.gridRows && <li>Rader: {question.gridRows.length}</li>}
+                        {question.gridColumns && <li>Kolumner: {question.gridColumns.length}</li>}
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
           </div>
           
           {/* Display question inputs based on question type */}
-          {question.questionType === "rating" && renderRatingScale()}
-          {question.questionType === "multiple-choice" && renderMultipleChoice()}
-          {question.questionType === "checkbox" && renderCheckboxes()}
-          {question.questionType === "grid" && renderGrid()}
-          {question.questionType === "text" && renderFillinBlanks()}
+          {renderQuestionInput()}
           
           {!isSubmitted ? (
             showNameInput ? (
@@ -571,22 +712,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Show appropriate input based on question type */}
-                {question.questionType === "text" && !renderFillinBlanks() && (
-                  <Input
-                    value={userAnswer}
-                    onChange={e => setUserAnswer(e.target.value)}
-                    placeholder="Ditt svar..."
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmitAnswer();
-                      }
-                    }}
-                  />
-                )}
-                
+              <div className="space-y-4 mt-4">
                 <Button 
                   onClick={handleSubmitAnswer} 
                   className="w-full"
@@ -597,7 +723,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               </div>
             )
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               {question.questionType === "text" && !renderFillinBlanks() && (
                 <>
                   <div className="flex items-center space-x-2">
