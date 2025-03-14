@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Question } from "@/types/question";
+import { Question, QuestionType } from "@/types/question";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
 const StudentAnswer = () => {
   const { questionId } = useParams();
@@ -15,7 +19,10 @@ const StudentAnswer = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [question, setQuestion] = useState<Question | null>(null);
-  const [answer, setAnswer] = useState("");
+  const [textAnswer, setTextAnswer] = useState("");
+  const [selectedOption, setSelectedOption] = useState("");
+  const [ratingValue, setRatingValue] = useState(1);
+  const [gridSelections, setGridSelections] = useState<Record<string, string>>({});
   const [studentName, setStudentName] = useState("");
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   const [captchaQuestion, setCaptchaQuestion] = useState("");
@@ -44,13 +51,37 @@ const StudentAnswer = () => {
         if (error) throw error;
 
         if (data) {
-          setQuestion({
+          const fetchedQuestion: Question = {
             id: data.id,
             text: data.text,
             answer: data.answer,
             createdAt: new Date(data.created_at),
             similarityThreshold: data.similarity_threshold || 0.7,
-            semanticMatching: data.semantic_matching !== false
+            semanticMatching: data.semantic_matching !== false,
+            questionType: (data.question_type as QuestionType) || 'text',
+            options: data.options,
+            ratingMin: data.rating_min,
+            ratingMax: data.rating_max,
+            gridRows: data.grid_rows,
+            gridColumns: data.grid_columns
+          };
+          
+          setQuestion(fetchedQuestion);
+          
+          // Set initial rating value if applicable
+          if (fetchedQuestion.questionType === 'rating' && fetchedQuestion.ratingMin !== undefined) {
+            setRatingValue(fetchedQuestion.ratingMin);
+          }
+          
+          console.log("Fetched question details:", {
+            id: fetchedQuestion.id,
+            type: fetchedQuestion.questionType,
+            options: fetchedQuestion.options,
+            ratingRange: `${fetchedQuestion.ratingMin}-${fetchedQuestion.ratingMax}`,
+            gridData: {
+              rows: fetchedQuestion.gridRows,
+              columns: fetchedQuestion.gridColumns
+            }
           });
         } else {
           toast({
@@ -75,6 +106,21 @@ const StudentAnswer = () => {
     fetchQuestion();
   }, [questionId, navigate]);
 
+  // Convert grid selections to string format for submission
+  const gridSelectionsToString = () => {
+    return Object.entries(gridSelections)
+      .map(([row, col]) => `${row}:${col}`)
+      .join(',');
+  };
+
+  // Handle grid cell selection
+  const handleGridCellSelect = (row: string, col: string) => {
+    setGridSelections(prev => ({
+      ...prev,
+      [row]: col
+    }));
+  };
+
   const handleSubmit = async () => {
     if (!question) return;
     
@@ -85,6 +131,25 @@ const StudentAnswer = () => {
         variant: "destructive",
       });
       return;
+    }
+    
+    // Get answer based on question type
+    let answer = "";
+    
+    switch (question.questionType) {
+      case "multiple-choice":
+        answer = selectedOption;
+        break;
+      case "rating":
+        answer = ratingValue.toString();
+        break;
+      case "grid":
+        answer = gridSelectionsToString();
+        break;
+      case "text":
+      default:
+        answer = textAnswer;
+        break;
     }
     
     if (!answer.trim()) {
@@ -140,6 +205,132 @@ const StudentAnswer = () => {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Render the appropriate input based on question type
+  const renderQuestionInput = () => {
+    if (!question) return null;
+
+    switch (question.questionType) {
+      case "multiple-choice":
+        return (
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Choose an answer
+            </label>
+            <RadioGroup 
+              value={selectedOption} 
+              onValueChange={setSelectedOption}
+              className="space-y-2"
+            >
+              {question.options?.map((option, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <RadioGroupItem value={option} id={`option-${index}`} />
+                  <Label htmlFor={`option-${index}`}>{option}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+        );
+      
+      case "rating":
+        const min = question.ratingMin !== undefined ? question.ratingMin : 1;
+        const max = question.ratingMax !== undefined ? question.ratingMax : 5;
+        
+        return (
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Your rating (from {min} to {max})
+            </label>
+            <div className="space-y-4">
+              <div className="flex justify-between text-sm">
+                <span>{min}</span>
+                <span>{max}</span>
+              </div>
+              <Slider
+                value={[ratingValue]}
+                min={min}
+                max={max}
+                step={1}
+                onValueChange={(values) => setRatingValue(values[0])}
+              />
+              <div className="text-center font-medium mt-2">
+                Selected value: {ratingValue}
+              </div>
+            </div>
+          </div>
+        );
+      
+      case "grid":
+        if (!question.gridRows?.length || !question.gridColumns?.length) {
+          return <p className="text-muted-foreground">Grid data is missing</p>;
+        }
+        
+        return (
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Match items by selecting cells in the grid
+            </label>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]"></TableHead>
+                    {question.gridColumns.map((col, colIndex) => (
+                      <TableHead key={colIndex} className="text-center">
+                        {col}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {question.gridRows.map((row, rowIndex) => (
+                    <TableRow key={rowIndex}>
+                      <TableCell className="font-medium">{row}</TableCell>
+                      {question.gridColumns?.map((col, colIndex) => (
+                        <TableCell key={colIndex} className="text-center p-2">
+                          <div 
+                            className={`h-6 w-6 rounded-full mx-auto cursor-pointer border ${
+                              gridSelections[row] === col 
+                                ? 'bg-primary border-primary' 
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            onClick={() => handleGridCellSelect(row, col)}
+                          />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="mt-2 text-sm text-muted-foreground">
+              Your selections: {Object.entries(gridSelections).length > 0 ? 
+                Object.entries(gridSelections)
+                  .map(([row, col]) => `${row} → ${col}`)
+                  .join(', ') : 
+                "None"}
+            </div>
+          </div>
+        );
+        
+      case "text":
+      default:
+        return (
+          <div>
+            <label htmlFor="answer" className="block text-sm font-medium mb-1">
+              Your Answer
+            </label>
+            <Input
+              id="answer"
+              placeholder="Type your answer here"
+              value={textAnswer}
+              onChange={(e) => setTextAnswer(e.target.value)}
+              disabled={submitting}
+            />
+          </div>
+        );
     }
   };
 
@@ -201,18 +392,7 @@ const StudentAnswer = () => {
                 />
               </div>
               
-              <div>
-                <label htmlFor="answer" className="block text-sm font-medium mb-1">
-                  Your Answer
-                </label>
-                <Input
-                  id="answer"
-                  placeholder="Type your answer here"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  disabled={submitting}
-                />
-              </div>
+              {renderQuestionInput()}
               
               <div className="p-4 bg-muted rounded-md">
                 <label htmlFor="captcha" className="block text-sm font-medium mb-1">
