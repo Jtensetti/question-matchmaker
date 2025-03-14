@@ -25,39 +25,61 @@ export function normalizeQuestionType(questionType: any): string {
     return standardizeQuestionType(questionType);
   }
   
-  // If it's an object with a value property (like from some form libraries)
+  // If it's an object with a value property (like from some form libraries or database)
   if (typeof questionType === "object") {
     console.log("Question type is an object:", questionType);
     
-    // Check if object has properties that contain the literal string "undefined"
-    if (questionType.value === "undefined" || questionType._type === "undefined") {
-      // Check if we have a property called 'question_type' (from database)
+    // Database case - Object with _type and value properties containing "undefined" strings
+    // This is a specific data pattern observed in the DB results
+    if ((questionType.value === "undefined" || questionType._type === "undefined")) {
+      // First try to check if there's a direct question_type property 
       if (questionType.question_type && typeof questionType.question_type === "string") {
+        console.log("Found question_type property:", questionType.question_type);
         return standardizeQuestionType(questionType.question_type);
       }
       
-      // This object likely has placeholder values - try to check the database column directly
-      // If we're in this spot, we need to get the actual type from the database
-      console.log("Object contains 'undefined' string values - defaulting to database format");
-      return "multiple-choice"; // Let's default to multiple-choice for this specific case
+      // If we're here, we need to look for other clues in the object
+      // Get most likely type based on object properties
+      if (questionType.options && Array.isArray(questionType.options) && questionType.options.length > 0 &&
+          questionType.options[0] !== "undefined") {
+        console.log("Inferring type from options array");
+        return "multiple-choice";
+      }
+      
+      if (questionType.rating_min && questionType.rating_max) {
+        console.log("Inferring type from rating properties");
+        return "rating";
+      }
+      
+      if (questionType.grid_rows && questionType.grid_columns) {
+        console.log("Inferring type from grid properties");
+        return "grid";
+      }
+      
+      // Default fallback for database objects with undefined type
+      console.log("Object has undefined value - using default type");
+      return "multiple-choice";
     }
     
-    // If it has a value property that's a string and not "undefined"
+    // Standard property checks for string values
     if (questionType.value && typeof questionType.value === "string" && 
         questionType.value !== "undefined") {
       return standardizeQuestionType(questionType.value);
     }
     
-    // If it has a type property that's a string and not "undefined"
     if (questionType.type && typeof questionType.type === "string" && 
         questionType.type !== "undefined") {
       return standardizeQuestionType(questionType.type);
     }
     
-    // Check for _type property which might be used in some systems
     if (questionType._type && typeof questionType._type === "string" && 
         questionType._type !== "undefined") {
       return standardizeQuestionType(questionType._type);
+    }
+    
+    // Check other common properties
+    if (questionType.questionType && typeof questionType.questionType === "string") {
+      return standardizeQuestionType(questionType.questionType);
     }
     
     // Check if any property contains a string value that might be a valid type
@@ -101,10 +123,17 @@ function standardizeQuestionType(type: string): string {
   // Map of inconsistent formats to standardized format
   const typeMap: Record<string, string> = {
     "multiple_choice": "multiple-choice",
+    "multiplechoice": "multiple-choice",
+    "multiple": "multiple-choice",
     "checkboxes": "checkbox",
+    "check": "checkbox",
     "grid_matching": "grid",
+    "matching": "grid",
     "open_ended": "text",
-    "fill_in_blank": "text"
+    "open": "text",
+    "fill_in_blank": "text",
+    "fill": "text",
+    "scale": "rating"
   };
   
   return typeMap[lowerType] || lowerType;

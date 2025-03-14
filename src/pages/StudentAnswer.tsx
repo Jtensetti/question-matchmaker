@@ -54,9 +54,21 @@ const StudentAnswer = () => {
         console.log("Question data from DB:", data);
 
         if (data) {
+          // Get raw question type first for debugging
+          const rawQuestionType = data.question_type;
+          console.log("Raw question type from DB:", rawQuestionType);
+          
           // Normalize the question type
           const normalizedType = normalizeQuestionType(data.question_type);
           console.log("Normalized question type:", normalizedType);
+          
+          // Include more detailed debugging
+          if (typeof data.question_type === 'object') {
+            console.log("Question type is an object - examining properties:");
+            Object.keys(data.question_type).forEach(key => {
+              console.log(`- ${key}: ${JSON.stringify(data.question_type[key])}`);
+            });
+          }
           
           // Properly convert database fields to our Question type
           const questionData: Question = {
@@ -66,7 +78,7 @@ const StudentAnswer = () => {
             createdAt: new Date(data.created_at),
             similarityThreshold: data.similarity_threshold || 0.7,
             semanticMatching: data.semantic_matching !== false,
-            questionType: normalizedType,
+            questionType: normalizedType, // Use normalized type
             options: Array.isArray(data.options) ? data.options : [],
             gridRows: Array.isArray(data.grid_rows) ? data.grid_rows : [],
             gridColumns: Array.isArray(data.grid_columns) ? data.grid_columns : [],
@@ -224,10 +236,17 @@ const StudentAnswer = () => {
   const renderQuestionInput = () => {
     if (!question) return null;
     
-    // Get the normalized question type
+    // Get the normalized question type and log it again for debugging
     const questionType = normalizeQuestionType(question.questionType);
     
-    console.log("Rendering input for question type:", questionType);
+    console.log("Rendering input for question type:", questionType, {
+      originalQuestionType: question.questionType,
+      options: question.options,
+      hasGridRows: Boolean(question.gridRows),
+      hasGridColumns: Boolean(question.gridColumns),
+      ratingMin: question.ratingMin,
+      ratingMax: question.ratingMax
+    });
     
     switch (questionType) {
       case "rating":
