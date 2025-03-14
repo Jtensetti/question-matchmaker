@@ -15,7 +15,7 @@ export const updateQuestionType = async (
 ) => {
   try {
     // Validate inputs based on question type
-    if ((questionType === 'multiple-choice' || questionType === 'checkbox') && 
+    if ((questionType === 'multiple_choice' || questionType === 'multiple-choice' || questionType === 'checkboxes' || questionType === 'checkbox') && 
         (!options || options.length === 0)) {
       return { 
         success: false, 
@@ -31,7 +31,7 @@ export const updateQuestionType = async (
       };
     }
     
-    if (questionType === 'grid' && 
+    if ((questionType === 'grid' || questionType === 'grid_matching') && 
         (!gridRows || !gridColumns || gridRows.length === 0 || gridColumns.length === 0)) {
       return { 
         success: false, 
@@ -39,24 +39,34 @@ export const updateQuestionType = async (
       };
     }
     
+    // Normalize question types to ensure consistency
+    let normalizedType = questionType;
+    if (questionType === 'multiple_choice') normalizedType = 'multiple-choice';
+    if (questionType === 'checkboxes') normalizedType = 'checkbox';
+    if (questionType === 'grid_matching') normalizedType = 'grid';
+    if (questionType === 'open_ended') normalizedType = 'text';
+    if (questionType === 'fill_in_blank') normalizedType = 'fill-in-blank';
+    
     const updateData: any = {
-      question_type: questionType
+      question_type: normalizedType
     };
     
     // Only include properties that are relevant to the question type
-    if (questionType === 'multiple-choice' || questionType === 'checkbox') {
+    if (normalizedType === 'multiple-choice' || normalizedType === 'checkbox') {
       updateData.options = options || [];
     }
     
-    if (questionType === 'rating') {
+    if (normalizedType === 'rating') {
       updateData.rating_min = ratingMin;
       updateData.rating_max = ratingMax;
     }
     
-    if (questionType === 'grid') {
+    if (normalizedType === 'grid') {
       updateData.grid_rows = gridRows || [];
       updateData.grid_columns = gridColumns || [];
     }
+    
+    console.log('Updating question type:', questionId, normalizedType, updateData);
     
     const { error } = await supabase
       .from('questions')
