@@ -8,7 +8,7 @@ import { GridQuestion } from "./question-types/GridQuestion";
 
 interface QuestionRendererProps {
   question: Question;
-  value: QuestionAnswer | string;
+  value: QuestionAnswer;
   onChange: (value: QuestionAnswer) => void;
   disabled?: boolean;
 }
@@ -36,8 +36,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       return (
         <RatingQuestion 
           question={question} 
-          value={value} 
-          onChange={(newValue) => onChange(newValue as RatingAnswer)} 
+          value={value as RatingAnswer} 
+          onChange={(newValue) => onChange(newValue)} 
           disabled={disabled} 
         />
       );
@@ -45,8 +45,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       return (
         <GridQuestion 
           question={question} 
-          value={value} 
-          onChange={(newValue) => onChange(newValue as GridAnswer)} 
+          value={value as GridAnswer} 
+          onChange={(newValue) => onChange(newValue)} 
           disabled={disabled} 
         />
       );

@@ -71,8 +71,8 @@ const TestTaking = () => {
       studentName={studentName}
       currentQuestionIndex={currentQuestionIndex}
       testQuestions={testQuestions}
-      answer={answer as QuestionAnswer}
-      setAnswer={(newValue: QuestionAnswer) => setAnswer(newValue)}
+      answer={answer}
+      setAnswer={setAnswer}
       submitting={submitting}
       handleAnswerSubmit={() => {
         if (validateAnswer(currentQuestion)) {

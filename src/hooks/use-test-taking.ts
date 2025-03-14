@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Test, Question } from "@/types/question";
+import { Test, Question, QuestionAnswer, GridAnswer } from "@/types/question";
 
 export const useTestTaking = (testId: string | undefined) => {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ export const useTestTaking = (testId: string | undefined) => {
   const [testQuestions, setTestQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [studentName, setStudentName] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] = useState<QuestionAnswer>("");
   const [nameEntered, setNameEntered] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [captchaAnswer, setCaptchaAnswer] = useState("");
@@ -125,8 +125,26 @@ export const useTestTaking = (testId: string | undefined) => {
 
   // Reset answer when changing questions
   useEffect(() => {
-    setAnswer("");
-  }, [currentQuestionIndex]);
+    // Initialize answer based on question type
+    const question = testQuestions[currentQuestionIndex];
+    if (question) {
+      switch (question.questionType) {
+        case "rating":
+          setAnswer(question.ratingMin || 1);
+          break;
+        case "grid":
+          setAnswer({ row: "", column: "" });
+          break;
+        case "multiple-choice":
+          setAnswer("");
+          break;
+        case "text":
+        default:
+          setAnswer("");
+          break;
+      }
+    }
+  }, [currentQuestionIndex, testQuestions]);
 
   const handleNameSubmit = () => {
     setNameEntered(true);
@@ -134,7 +152,7 @@ export const useTestTaking = (testId: string | undefined) => {
 
   // Validate answer based on question type
   const validateAnswer = (question: Question): boolean => {
-    if (!answer.trim()) {
+    if (question.questionType === "text" && typeof answer === "string" && !answer.trim()) {
       toast({
         title: "Answer required",
         description: "Please provide an answer to the question.",
@@ -145,11 +163,19 @@ export const useTestTaking = (testId: string | undefined) => {
 
     switch (question.questionType) {
       case "rating":
-        const ratingValue = parseInt(answer);
+        if (typeof answer !== "number") {
+          toast({
+            title: "Invalid rating",
+            description: "Please select a valid rating.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        
         const min = question.ratingMin ?? 1;
         const max = question.ratingMax ?? 10;
         
-        if (isNaN(ratingValue) || ratingValue < min || ratingValue > max) {
+        if (answer < min || answer > max) {
           toast({
             title: "Invalid rating",
             description: `Please select a rating between ${min} and ${max}.`,
@@ -160,20 +186,20 @@ export const useTestTaking = (testId: string | undefined) => {
         break;
       
       case "grid":
-        try {
-          const gridAnswer = JSON.parse(answer);
-          if (!gridAnswer.row || !gridAnswer.column) {
-            toast({
-              title: "Incomplete selection",
-              description: "Please select both a row and column.",
-              variant: "destructive",
-            });
-            return false;
-          }
-        } catch (e) {
+        if (typeof answer !== "object" || !answer || !("row" in answer) || !("column" in answer)) {
           toast({
-            title: "Invalid selection",
-            description: "Please make a valid grid selection.",
+            title: "Incomplete selection",
+            description: "Please select both a row and column.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        
+        const gridAnswer = answer as GridAnswer;
+        if (!gridAnswer.row || !gridAnswer.column) {
+          toast({
+            title: "Incomplete selection",
+            description: "Please select both a row and column.",
             variant: "destructive",
           });
           return false;
@@ -181,7 +207,16 @@ export const useTestTaking = (testId: string | undefined) => {
         break;
       
       case "multiple-choice":
-        if (!question.options?.includes(answer)) {
+        if (typeof answer !== "string" || !answer) {
+          toast({
+            title: "Invalid choice",
+            description: "Please select one of the available options.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        
+        if (!question.options?.includes(answer as string)) {
           toast({
             title: "Invalid choice",
             description: "Please select one of the available options.",
@@ -201,21 +236,29 @@ export const useTestTaking = (testId: string | undefined) => {
     setSubmitting(true);
     
     try {
+      // Convert the answer to string format for storage
+      let stringifiedAnswer: string;
+      
+      if (typeof answer === "object") {
+        stringifiedAnswer = JSON.stringify(answer);
+      } else {
+        stringifiedAnswer = String(answer);
+      }
+      
       // Store answer for final submission
       setAnswers(prev => [...prev, {
         questionId: testQuestions[currentQuestionIndex].id,
-        answer: answer.trim()
+        answer: stringifiedAnswer
       }]);
       
       // Move to next question
       if (currentQuestionIndex < testQuestions.length - 1) {
         setCurrentQuestionIndex(prev => prev + 1);
-        setAnswer("");
       } else {
         // Submit all answers to Supabase
         const allAnswers = [...answers, {
           questionId: testQuestions[currentQuestionIndex].id,
-          answer: answer.trim()
+          answer: stringifiedAnswer
         }];
         
         for (const ans of allAnswers) {

@@ -5,7 +5,7 @@ import { Question, RatingAnswer } from "@/types/question";
 
 interface RatingQuestionProps {
   question: Question;
-  value: RatingAnswer | string; // Accept both for backward compatibility
+  value: RatingAnswer; 
   onChange: (value: RatingAnswer) => void;
   disabled?: boolean;
 }
@@ -20,9 +20,7 @@ export const RatingQuestion: React.FC<RatingQuestionProps> = ({
   const max = question.ratingMax ?? 10;
   
   // Ensure we're working with a number
-  const currentValue = typeof value === 'string' 
-    ? (value ? parseInt(value) : min) 
-    : (value ?? min);
+  const currentValue = typeof value === 'number' ? value : min;
   
   return (
     <div className="space-y-4">

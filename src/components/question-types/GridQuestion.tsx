@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Question, GridAnswer } from "@/types/question";
 
 interface GridQuestionProps {
   question: Question;
-  value: GridAnswer | string; // Accept both for backward compatibility
+  value: GridAnswer;
   onChange: (value: GridAnswer) => void;
   disabled?: boolean;
 }
@@ -18,43 +19,16 @@ export const GridQuestion: React.FC<GridQuestionProps> = ({
   const rows = question.gridRows || [];
   const columns = question.gridColumns || [];
   
-  // Parse the current value or initialize an empty selection
-  const [selectedCell, setSelectedCell] = useState<GridAnswer>(() => {
-    if (typeof value === 'string') {
-      try {
-        return value ? JSON.parse(value) : { row: "", column: "" };
-      } catch {
-        return { row: "", column: "" };
-      }
-    }
-    return value || { row: "", column: "" };
-  });
-  
-  // Ensure selectedCell stays in sync with external value changes
-  useEffect(() => {
-    if (typeof value === 'string') {
-      try {
-        if (value) {
-          const parsed = JSON.parse(value);
-          setSelectedCell(parsed);
-        }
-      } catch (e) {
-        // If parsing fails, keep current state
-      }
-    } else if (value) {
-      setSelectedCell(value);
-    }
-  }, [value]);
+  // Ensure we have a valid GridAnswer object
+  const selectedCell = value || { row: "", column: "" };
   
   const handleRowChange = (row: string) => {
     const newSelection = { ...selectedCell, row };
-    setSelectedCell(newSelection);
     onChange(newSelection);
   };
   
   const handleColumnChange = (column: string) => {
     const newSelection = { ...selectedCell, column };
-    setSelectedCell(newSelection);
     onChange(newSelection);
   };
   
@@ -63,7 +37,6 @@ export const GridQuestion: React.FC<GridQuestionProps> = ({
     if (disabled) return;
     
     const newSelection = { row, column };
-    setSelectedCell(newSelection);
     onChange(newSelection);
   };
   
