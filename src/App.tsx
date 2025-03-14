@@ -13,6 +13,7 @@ import TestTaking from "./pages/TestTaking";
 import TestThankYou from "./pages/TestThankYou";
 import TestDashboard from "./pages/TestDashboard";
 import ResetPassword from "./pages/ResetPassword";
+import TestResetEmail from "./pages/TestResetEmail";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/test-thank-you/:testId" element={<TestThankYou />} />
           <Route path="/test-dashboard/:testId" element={<TestDashboard />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/test-reset-email" element={<TestResetEmail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
