@@ -42,13 +42,20 @@ const StudentAnswer = () => {
       if (!questionId) return;
       
       try {
+        console.log("Fetching question with ID:", questionId);
+        
         const { data, error } = await supabase
           .from('questions')
           .select('*')
           .eq('id', questionId)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase error when fetching question:', error);
+          throw error;
+        }
+
+        console.log("Raw question data from database:", data);
 
         if (data) {
           const fetchedQuestion: Question = {
@@ -66,24 +73,23 @@ const StudentAnswer = () => {
             gridColumns: data.grid_columns
           };
           
+          console.log("Processed question data:", {
+            id: fetchedQuestion.id,
+            questionType: fetchedQuestion.questionType,
+            hasOptions: Array.isArray(fetchedQuestion.options) && fetchedQuestion.options.length > 0,
+            optionsLength: fetchedQuestion.options?.length,
+            hasRatingRange: fetchedQuestion.ratingMin !== undefined && fetchedQuestion.ratingMax !== undefined,
+            hasGridData: Array.isArray(fetchedQuestion.gridRows) && Array.isArray(fetchedQuestion.gridColumns)
+          });
+          
           setQuestion(fetchedQuestion);
           
           // Set initial rating value if applicable
           if (fetchedQuestion.questionType === 'rating' && fetchedQuestion.ratingMin !== undefined) {
             setRatingValue(fetchedQuestion.ratingMin);
           }
-          
-          console.log("Fetched question details:", {
-            id: fetchedQuestion.id,
-            type: fetchedQuestion.questionType,
-            options: fetchedQuestion.options,
-            ratingRange: `${fetchedQuestion.ratingMin}-${fetchedQuestion.ratingMax}`,
-            gridData: {
-              rows: fetchedQuestion.gridRows,
-              columns: fetchedQuestion.gridColumns
-            }
-          });
         } else {
+          console.log("No question data returned for ID:", questionId);
           toast({
             title: "Question not found",
             description: "The question you're looking for doesn't exist.",
@@ -175,6 +181,13 @@ const StudentAnswer = () => {
     setSubmitting(true);
     
     try {
+      console.log("Submitting answer:", {
+        questionId: question.id,
+        questionType: question.questionType,
+        studentName,
+        answer
+      });
+      
       // Store the student answer in the database
       const { error } = await supabase
         .from('student_answers')
@@ -211,9 +224,12 @@ const StudentAnswer = () => {
   // Render the appropriate input based on question type
   const renderQuestionInput = () => {
     if (!question) return null;
+    
+    console.log("Rendering input for question type:", question.questionType);
 
     switch (question.questionType) {
       case "multiple-choice":
+        console.log("Rendering multiple-choice with options:", question.options);
         return (
           <div>
             <label className="block text-sm font-medium mb-2">
@@ -238,6 +254,7 @@ const StudentAnswer = () => {
         const min = question.ratingMin !== undefined ? question.ratingMin : 1;
         const max = question.ratingMax !== undefined ? question.ratingMax : 5;
         
+        console.log("Rendering rating input with range:", min, "-", max);
         return (
           <div>
             <label className="block text-sm font-medium mb-2">
@@ -264,9 +281,11 @@ const StudentAnswer = () => {
       
       case "grid":
         if (!question.gridRows?.length || !question.gridColumns?.length) {
+          console.log("Grid data is missing for grid question");
           return <p className="text-muted-foreground">Grid data is missing</p>;
         }
         
+        console.log("Rendering grid with dimensions:", question.gridRows.length, "x", question.gridColumns.length);
         return (
           <div>
             <label className="block text-sm font-medium mb-2">
@@ -317,6 +336,7 @@ const StudentAnswer = () => {
         
       case "text":
       default:
+        console.log("Rendering text input (default)");
         return (
           <div>
             <label htmlFor="answer" className="block text-sm font-medium mb-1">
@@ -366,16 +386,21 @@ const StudentAnswer = () => {
     );
   }
 
+  console.log("Final render with question type:", question.questionType);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8 max-w-2xl mx-auto">
         <Card className="w-full">
           <CardHeader>
             <h1 className="text-2xl font-bold">Answer this Question</h1>
+            <div className="text-sm text-muted-foreground">
+              Question type: <span className="font-medium">{question.questionType}</span>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="p-4 bg-muted rounded-md">
-              <h2 className="text-xl font-semibold mb-2">{question?.text}</h2>
+              <h2 className="text-xl font-semibold mb-2">{question.text}</h2>
             </div>
             
             <div className="space-y-4">
