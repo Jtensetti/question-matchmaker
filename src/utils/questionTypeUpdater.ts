@@ -61,7 +61,8 @@ export const updateQuestionType = async (
     const updateData: any = {};
     
     // Explicitly set question_type as a string literal
-    updateData.question_type = String(normalizedType);
+    // This is crucial - we need to ensure it's stored as a string in the database
+    updateData.question_type = normalizedType;
     
     // Only include properties that are relevant to the question type
     if (normalizedType === 'multiple-choice' || normalizedType === 'checkbox') {

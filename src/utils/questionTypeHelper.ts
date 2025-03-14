@@ -14,17 +14,15 @@ export function normalizeQuestionType(questionType: any): string {
     return "text";
   }
   
-  // Log what's actually being received
+  // Log for debugging
   console.log("normalizeQuestionType received:", {
     value: questionType,
-    type: typeof questionType,
-    isObject: typeof questionType === 'object',
-    stringified: JSON.stringify(questionType)
+    type: typeof questionType
   });
   
-  // If it's already a string, return it
+  // If it's already a string, standardize the format
   if (typeof questionType === "string") {
-    return questionType;
+    return standardizeQuestionType(questionType);
   }
   
   // If it's an object with a value property (like from some form libraries)
@@ -32,21 +30,18 @@ export function normalizeQuestionType(questionType: any): string {
     console.log("Question type is an object:", questionType);
     
     // If it has a value property that's a string, use that
-    if (questionType.value && typeof questionType.value === "string" && 
-        questionType.value !== "undefined") {
-      return questionType.value;
+    if (questionType.value && typeof questionType.value === "string") {
+      return standardizeQuestionType(questionType.value);
     }
     
     // If it has a type property that's a string, use that
-    if (questionType.type && typeof questionType.type === "string" && 
-        questionType.type !== "undefined") {
-      return questionType.type;
+    if (questionType.type && typeof questionType.type === "string") {
+      return standardizeQuestionType(questionType.type);
     }
     
     // Check for _type property which might be used in some systems
-    if (questionType._type && typeof questionType._type === "string" && 
-        questionType._type !== "undefined") {
-      return questionType._type;
+    if (questionType._type && typeof questionType._type === "string") {
+      return standardizeQuestionType(questionType._type);
     }
     
     // Try to use JSON.stringify to get more information
@@ -56,10 +51,7 @@ export function normalizeQuestionType(questionType: any): string {
       
       // If it's a simple string wrapped in quotes in the JSON, extract it
       if (stringified && stringified.startsWith('"') && stringified.endsWith('"')) {
-        const extracted = stringified.substring(1, stringified.length - 1);
-        if (isValidQuestionType(extracted)) {
-          return extracted;
-        }
+        return standardizeQuestionType(stringified.substring(1, stringified.length - 1));
       }
     } catch (e) {
       console.error("Error stringifying question type:", e);
@@ -72,13 +64,34 @@ export function normalizeQuestionType(questionType: any): string {
 }
 
 /**
+ * Standardize question type strings to a consistent format
+ * This handles variations like "multiple_choice" vs "multiple-choice"
+ */
+function standardizeQuestionType(type: string): string {
+  if (!type) return "text";
+  
+  // Convert to lowercase for consistency
+  const lowerType = type.toLowerCase();
+  
+  // Map of inconsistent formats to standardized format
+  const typeMap: Record<string, string> = {
+    "multiple_choice": "multiple-choice",
+    "checkboxes": "checkbox",
+    "grid_matching": "grid",
+    "open_ended": "text",
+    "fill_in_blank": "text"
+  };
+  
+  return typeMap[lowerType] || lowerType;
+}
+
+/**
  * Checks if a question type is valid
  */
 export function isValidQuestionType(type: string): boolean {
-  const validTypes = ["text", "multiple-choice", "checkbox", "grid", "rating", 
-                     "open_ended", "multiple_choice", "checkboxes", "grid_matching", 
-                     "rating", "fill_in_blank"];
-  return validTypes.includes(type);
+  const standardizedType = standardizeQuestionType(type);
+  const validTypes = ["text", "multiple-choice", "checkbox", "grid", "rating"];
+  return validTypes.includes(standardizedType);
 }
 
 /**
