@@ -51,7 +51,10 @@ const StudentAnswer = () => {
 
         if (error) throw error;
 
+        console.log("Question data from DB:", data);
+
         if (data) {
+          // Properly convert database fields to our Question type
           setQuestion({
             id: data.id,
             text: data.text,
@@ -60,12 +63,23 @@ const StudentAnswer = () => {
             similarityThreshold: data.similarity_threshold || 0.7,
             semanticMatching: data.semantic_matching !== false,
             questionType: data.question_type || 'text',
+            options: Array.isArray(data.options) ? data.options : [],
+            gridRows: Array.isArray(data.grid_rows) ? data.grid_rows : [],
+            gridColumns: Array.isArray(data.grid_columns) ? data.grid_columns : [],
+            ratingMin: typeof data.rating_min === 'number' ? data.rating_min : null,
+            ratingMax: typeof data.rating_max === 'number' ? data.rating_max : null,
+            ratingCorrect: parseInt(data.answer)
+          });
+          
+          console.log("Converted question object:", {
+            id: data.id,
+            text: data.text,
+            questionType: data.question_type,
             options: data.options,
             gridRows: data.grid_rows,
             gridColumns: data.grid_columns,
             ratingMin: data.rating_min,
-            ratingMax: data.rating_max,
-            ratingCorrect: parseInt(data.answer)
+            ratingMax: data.rating_max
           });
         } else {
           toast({
