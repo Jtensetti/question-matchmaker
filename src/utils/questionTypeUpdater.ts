@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeQuestionType, isValidQuestionType } from "@/utils/questionTypeHelper";
 
 /**
  * Updates a question's type and related properties in the database
@@ -14,8 +15,24 @@ export const updateQuestionType = async (
   gridColumns?: string[]
 ) => {
   try {
-    // Validate inputs based on question type
-    if ((questionType === 'multiple_choice' || questionType === 'multiple-choice' || questionType === 'checkboxes' || questionType === 'checkbox') && 
+    // Normalize the question type first, using our shared utility
+    const normalizedType = normalizeQuestionType(questionType);
+    
+    console.log("Updating question type, input vs normalized:", {
+      original: questionType,
+      normalized: normalizedType
+    });
+    
+    // Validate the normalized type
+    if (!isValidQuestionType(normalizedType)) {
+      return { 
+        success: false, 
+        error: new Error(`Invalid question type: ${normalizedType}`) 
+      };
+    }
+    
+    // Validate inputs based on normalized question type
+    if ((normalizedType === 'multiple-choice' || normalizedType === 'checkbox') && 
         (!options || options.length === 0)) {
       return { 
         success: false, 
@@ -23,7 +40,7 @@ export const updateQuestionType = async (
       };
     }
     
-    if (questionType === 'rating' && 
+    if (normalizedType === 'rating' && 
         (ratingMin === undefined || ratingMax === undefined || ratingMin >= ratingMax)) {
       return { 
         success: false, 
@@ -31,21 +48,13 @@ export const updateQuestionType = async (
       };
     }
     
-    if ((questionType === 'grid' || questionType === 'grid_matching') && 
+    if (normalizedType === 'grid' && 
         (!gridRows || !gridColumns || gridRows.length === 0 || gridColumns.length === 0)) {
       return { 
         success: false, 
         error: new Error("Grid rows and columns are required for grid questions") 
       };
     }
-    
-    // Normalize question types to ensure consistency
-    let normalizedType = questionType;
-    if (questionType === 'multiple_choice') normalizedType = 'multiple-choice';
-    if (questionType === 'checkboxes') normalizedType = 'checkbox';
-    if (questionType === 'grid_matching') normalizedType = 'grid';
-    if (questionType === 'open_ended') normalizedType = 'text';
-    if (questionType === 'fill_in_blank') normalizedType = 'fill-in-blank';
     
     const updateData: any = {
       question_type: normalizedType
@@ -66,7 +75,11 @@ export const updateQuestionType = async (
       updateData.grid_columns = gridColumns || [];
     }
     
-    console.log('Updating question type:', questionId, normalizedType, updateData);
+    console.log('Updating question type with data:', {
+      id: questionId, 
+      type: normalizedType, 
+      data: updateData
+    });
     
     const { error } = await supabase
       .from('questions')
@@ -147,10 +160,19 @@ export const getQuestionType = async (questionId: string) => {
       
     if (error) throw error;
     
+    // Normalize the question type from the database
+    const normalizedType = normalizeQuestionType(data.question_type);
+    
+    console.log('Retrieved question type:', {
+      id: questionId,
+      rawType: data.question_type,
+      normalizedType: normalizedType
+    });
+    
     return { 
       success: true, 
       data: {
-        questionType: data.question_type || 'text',
+        questionType: normalizedType,
         options: data.options || [],
         ratingMin: data.rating_min,
         ratingMax: data.rating_max,
