@@ -75,7 +75,9 @@ export function normalizeQuestionType(questionType: any): string {
  * Checks if a question type is valid
  */
 export function isValidQuestionType(type: string): boolean {
-  const validTypes = ["text", "multiple-choice", "checkbox", "grid", "rating"];
+  const validTypes = ["text", "multiple-choice", "checkbox", "grid", "rating", 
+                     "open_ended", "multiple_choice", "checkboxes", "grid_matching", 
+                     "rating", "fill_in_blank"];
   return validTypes.includes(type);
 }
 

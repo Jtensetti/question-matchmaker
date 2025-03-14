@@ -57,10 +57,11 @@ export const updateQuestionType = async (
       };
     }
     
-    // Ensure question_type is stored as a plain string
-    const updateData: any = {
-      question_type: normalizedType
-    };
+    // Force question_type to be stored as a plain string, not an object
+    const updateData: any = {};
+    
+    // Explicitly set question_type as a string literal
+    updateData.question_type = String(normalizedType);
     
     // Only include properties that are relevant to the question type
     if (normalizedType === 'multiple-choice' || normalizedType === 'checkbox') {

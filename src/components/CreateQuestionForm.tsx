@@ -180,13 +180,17 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
     const finalAnswer = questionType === "rating" 
       ? ratingCorrect.toString()
       : answer;
+    
+    // Ensure question type is saved as a string, not an object
+    const normalizedQuestionType = String(questionType);
+    console.log("Submitting question with type:", normalizedQuestionType);
 
     onSubmit(
       question, 
       finalAnswer, 
       similarityThreshold, 
       useSemanticMatching,
-      questionType,
+      normalizedQuestionType,
       filteredOptions,
       filteredGridRows,
       filteredGridColumns,
