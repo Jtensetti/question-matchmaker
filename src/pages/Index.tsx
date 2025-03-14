@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Question, Test } from "@/types/question";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -58,7 +57,6 @@ const Index = () => {
 
   const fetchQuestions = async () => {
     try {
-      // For teachers and admins, fetch all questions from the database
       const { data, error } = await supabase
         .from('questions')
         .select('*')
@@ -97,8 +95,6 @@ const Index = () => {
 
   const fetchTests = async () => {
     try {
-      // For tests, only fetch the ones created by the logged-in teacher
-      // Admin can see all tests
       let query = supabase
         .from('tests')
         .select('*')
@@ -416,10 +412,19 @@ const Index = () => {
     });
   };
 
-  const checkAdminPassword = () => {
+  const checkAdminPassword = async () => {
     setIsCheckingPassword(true);
-    setTimeout(() => {
-      if (adminPassword === ADMIN_PASSWORD) {
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-admin', {
+        body: { password: adminPassword }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.isAdmin) {
         setIsAdmin(true);
         setIsTeacher(true);
         setShowAdminDialog(false);
@@ -435,9 +440,17 @@ const Index = () => {
           variant: "destructive",
         });
       }
+    } catch (error) {
+      console.error('Error checking admin password:', error);
+      toast({
+        title: "Fel",
+        description: "Ett fel uppstod vid kontroll av administratörslösenord",
+        variant: "destructive",
+      });
+    } finally {
       setAdminPassword("");
       setIsCheckingPassword(false);
-    }, 500);
+    }
   };
 
   const toggleAdminMode = () => {
@@ -683,7 +696,6 @@ const Index = () => {
                         question={question}
                         isTeacher={true}
                         isAdmin={isAdmin}
-                        // Only allow deletion if admin or if the teacher is the creator
                         onDeleteClick={
                           isAdmin || question.teacherId === teacherId 
                             ? () => confirmDeleteQuestion(question.id) 
@@ -787,7 +799,7 @@ const Index = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button 
+            <AlertDialogAction 
               onClick={checkAdminPassword}
               disabled={isCheckingPassword}
               className="bg-amber-600 hover:bg-amber-700"
@@ -800,7 +812,7 @@ const Index = () => {
               ) : (
                 "Fortsätt"
               )}
-            </Button>
+            </AlertDialogAction>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -34,7 +34,13 @@ export type Database = {
         Row: {
           answer: string
           created_at: string
+          grid_columns: string[] | null
+          grid_rows: string[] | null
           id: string
+          options: string[] | null
+          question_type: string
+          rating_max: number | null
+          rating_min: number | null
           semantic_matching: boolean | null
           similarity_threshold: number | null
           teacher_id: string | null
@@ -43,7 +49,13 @@ export type Database = {
         Insert: {
           answer: string
           created_at?: string
+          grid_columns?: string[] | null
+          grid_rows?: string[] | null
           id?: string
+          options?: string[] | null
+          question_type?: string
+          rating_max?: number | null
+          rating_min?: number | null
           semantic_matching?: boolean | null
           similarity_threshold?: number | null
           teacher_id?: string | null
@@ -52,7 +64,13 @@ export type Database = {
         Update: {
           answer?: string
           created_at?: string
+          grid_columns?: string[] | null
+          grid_rows?: string[] | null
           id?: string
+          options?: string[] | null
+          question_type?: string
+          rating_max?: number | null
+          rating_min?: number | null
           semantic_matching?: boolean | null
           similarity_threshold?: number | null
           teacher_id?: string | null
@@ -213,7 +231,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      question_type_enum: "text" | "multiple-choice" | "rating" | "grid"
     }
     CompositeTypes: {
       [_ in never]: never
