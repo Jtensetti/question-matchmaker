@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { normalizeQuestionType } from "@/utils/questionTypeHelper";
 
 interface QuestionCardProps {
   question: Question;
@@ -44,14 +45,13 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [gridAnswers, setGridAnswers] = useState<Record<string, string>>({});
 
-  const questionType = typeof question.questionType === 'object' 
-    ? (question.questionType as any)?.value || 'text' 
-    : question.questionType || 'text';
+  const questionType = normalizeQuestionType(question.questionType);
 
-  console.log("Question in QuestionCard with fixed type:", {
+  console.log("Question in QuestionCard with normalized type:", {
     id: question.id,
     text: question.text,
     questionType,
+    rawQuestionType: question.questionType,
     options: question.options,
     ratingMin: question.ratingMin,
     ratingMax: question.ratingMax,
@@ -653,6 +653,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                       <ul className="list-disc pl-4 space-y-1">
                         <li>ID: {question.id}</li>
                         <li>Typ: {questionType || "text"}</li>
+                        <li>Rå typ: {JSON.stringify(question.questionType)}</li>
                         {question.options && <li>Alternativ: {question.options.join(", ")}</li>}
                         {question.ratingMin && <li>Min: {question.ratingMin}</li>}
                         {question.ratingMax && <li>Max: {question.ratingMax}</li>}

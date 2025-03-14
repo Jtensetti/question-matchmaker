@@ -12,6 +12,7 @@ import { Loader2, AlertTriangle, AlignLeft, AlignRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Test, Question } from "@/types/question";
 import { Progress } from "@/components/ui/progress";
+import { normalizeQuestionType } from "@/utils/questionTypeHelper";
 
 const TestTaking = () => {
   const { testId } = useParams();
@@ -305,9 +306,14 @@ const TestTaking = () => {
     
     const currentQuestion = testQuestions[currentQuestionIndex];
     
-    const questionType = typeof currentQuestion.questionType === 'object' 
-      ? (currentQuestion.questionType as any)?.value || 'text' 
-      : currentQuestion.questionType || 'text';
+    const questionType = normalizeQuestionType(currentQuestion.questionType);
+    
+    console.log("Question type in TestTaking:", {
+      questionId: currentQuestion.id,
+      questionText: currentQuestion.text,
+      questionType,
+      rawQuestionType: currentQuestion.questionType
+    });
     
     switch (questionType) {
       case "rating":
