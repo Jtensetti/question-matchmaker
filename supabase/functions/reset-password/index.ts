@@ -43,7 +43,11 @@ serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     
     if (!supabaseUrl || !supabaseServiceKey || !resendApiKey) {
-      console.error('Missing environment variables')
+      console.error('Missing environment variables', { 
+        hasSupabaseUrl: !!supabaseUrl, 
+        hasSupabaseKey: !!supabaseServiceKey, 
+        hasResendKey: !!resendApiKey 
+      })
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         {
@@ -64,6 +68,7 @@ serve(async (req) => {
       .single()
 
     if (teacherError || !teacherData) {
+      console.log('Teacher not found or error:', teacherError)
       // We don't want to reveal if the email exists or not for security reasons
       // Just return success even if the email doesn't exist
       return new Response(
@@ -76,6 +81,7 @@ serve(async (req) => {
     }
 
     if (!teacherData.is_active) {
+      console.log('Teacher account is inactive:', email)
       // Don't send reset emails to inactive accounts
       return new Response(
         JSON.stringify({ success: true }),
@@ -116,35 +122,42 @@ serve(async (req) => {
     // Send email with Resend
     const teacherName = teacherData.full_name || 'Lärare'
     
-    const { data: emailData, error: emailError } = await resend.emails.send({
-      from: 'Lärarportalen <noreply@resend.dev>',
-      to: [email],
-      subject: 'Återställ ditt lösenord',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Hej ${teacherName}!</h2>
-          <p>Vi har mottagit en begäran om att återställa ditt lösenord.</p>
-          <p>Klicka på länken nedan för att välja ett nytt lösenord:</p>
-          <p>
-            <a href="${resetLink}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
-              Återställ lösenord
-            </a>
-          </p>
-          <p>Eller kopiera denna länk till din webbläsare:</p>
-          <p>${resetLink}</p>
-          <p>Denna länk är giltig i ${tokenExpiryHours} timmar.</p>
-          <p>Om du inte begärde att återställa ditt lösenord kan du bortse från detta meddelande.</p>
-          <p>Med vänliga hälsningar,<br>Lärarportalen</p>
-        </div>
-      `
-    });
+    console.log('Attempting to send email to:', email)
     
-    if (emailError) {
-      console.error('Error sending email:', emailError);
-      throw new Error('Failed to send password reset email');
+    try {
+      const { data: emailData, error: emailError } = await resend.emails.send({
+        from: 'Lärarportalen <onboarding@resend.dev>',
+        to: [email],
+        subject: 'Återställ ditt lösenord',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Hej ${teacherName}!</h2>
+            <p>Vi har mottagit en begäran om att återställa ditt lösenord.</p>
+            <p>Klicka på länken nedan för att välja ett nytt lösenord:</p>
+            <p>
+              <a href="${resetLink}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+                Återställ lösenord
+              </a>
+            </p>
+            <p>Eller kopiera denna länk till din webbläsare:</p>
+            <p>${resetLink}</p>
+            <p>Denna länk är giltig i ${tokenExpiryHours} timmar.</p>
+            <p>Om du inte begärde att återställa ditt lösenord kan du bortse från detta meddelande.</p>
+            <p>Med vänliga hälsningar,<br>Lärarportalen</p>
+          </div>
+        `
+      });
+      
+      if (emailError) {
+        console.error('Resend error details:', emailError)
+        throw new Error('Failed to send password reset email: ' + (emailError.message || 'Unknown error'))
+      }
+      
+      console.log('Password reset email sent successfully', emailData)
+    } catch (emailErr) {
+      console.error('Caught error while sending email:', emailErr)
+      throw new Error('Email sending failed: ' + (emailErr.message || 'Unknown error'))
     }
-    
-    console.log('Password reset email sent successfully', emailData);
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -157,7 +170,7 @@ serve(async (req) => {
     console.error('Error in reset-password function:', error)
     
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
