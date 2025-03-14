@@ -13,9 +13,10 @@ type LoginFormProps = {
   onSuccess: (teacherId: string, teacherEmail: string, teacherName: string) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  onForgotPassword: () => void;
 };
 
-export const LoginForm = ({ onSuccess, isLoading, setIsLoading }: LoginFormProps) => {
+export const LoginForm = ({ onSuccess, isLoading, setIsLoading, onForgotPassword }: LoginFormProps) => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -104,15 +105,26 @@ export const LoginForm = ({ onSuccess, isLoading, setIsLoading }: LoginFormProps
           disabled={isLoading}
         />
       </div>
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="rememberMe"
-          checked={rememberMe}
-          onChange={(e) => setRememberMe(e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-        />
-        <Label htmlFor="rememberMe" className="text-sm">Kom ihåg mig</Label>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="rememberMe"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <Label htmlFor="rememberMe" className="text-sm">Kom ihåg mig</Label>
+        </div>
+        <Button 
+          type="button" 
+          variant="link" 
+          className="p-0 h-auto" 
+          onClick={onForgotPassword}
+          disabled={isLoading}
+        >
+          Glömt lösenord?
+        </Button>
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
