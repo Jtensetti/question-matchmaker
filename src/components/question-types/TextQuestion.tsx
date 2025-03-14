@@ -1,12 +1,12 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Input } from "@/components/ui/input";
-import { Question } from "@/types/question";
+import { Question, TextAnswer } from "@/types/question";
 
 interface TextQuestionProps {
   question: Question;
-  value: string;
-  onChange: (value: string) => void;
+  value: TextAnswer;
+  onChange: (value: TextAnswer) => void;
   disabled?: boolean;
 }
 

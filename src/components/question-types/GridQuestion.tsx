@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Question } from "@/types/question";
+import { Question, GridAnswer } from "@/types/question";
 
 interface GridQuestionProps {
   question: Question;
-  value: string;
-  onChange: (value: string) => void;
+  value: GridAnswer | string; // Accept both for backward compatibility
+  onChange: (value: GridAnswer) => void;
   disabled?: boolean;
 }
 
@@ -19,39 +19,43 @@ export const GridQuestion: React.FC<GridQuestionProps> = ({
   const columns = question.gridColumns || [];
   
   // Parse the current value or initialize an empty selection
-  const [selectedCell, setSelectedCell] = useState<{
-    row: string;
-    column: string;
-  }>(() => {
-    try {
-      return value ? JSON.parse(value) : { row: "", column: "" };
-    } catch {
-      return { row: "", column: "" };
+  const [selectedCell, setSelectedCell] = useState<GridAnswer>(() => {
+    if (typeof value === 'string') {
+      try {
+        return value ? JSON.parse(value) : { row: "", column: "" };
+      } catch {
+        return { row: "", column: "" };
+      }
     }
+    return value || { row: "", column: "" };
   });
   
   // Ensure selectedCell stays in sync with external value changes
   useEffect(() => {
-    try {
-      if (value) {
-        const parsed = JSON.parse(value);
-        setSelectedCell(parsed);
+    if (typeof value === 'string') {
+      try {
+        if (value) {
+          const parsed = JSON.parse(value);
+          setSelectedCell(parsed);
+        }
+      } catch (e) {
+        // If parsing fails, keep current state
       }
-    } catch (e) {
-      // If parsing fails, keep current state
+    } else if (value) {
+      setSelectedCell(value);
     }
   }, [value]);
   
   const handleRowChange = (row: string) => {
     const newSelection = { ...selectedCell, row };
     setSelectedCell(newSelection);
-    onChange(JSON.stringify(newSelection));
+    onChange(newSelection);
   };
   
   const handleColumnChange = (column: string) => {
     const newSelection = { ...selectedCell, column };
     setSelectedCell(newSelection);
-    onChange(JSON.stringify(newSelection));
+    onChange(newSelection);
   };
   
   // Function to handle direct cell selection from the grid
@@ -60,7 +64,7 @@ export const GridQuestion: React.FC<GridQuestionProps> = ({
     
     const newSelection = { row, column };
     setSelectedCell(newSelection);
-    onChange(JSON.stringify(newSelection));
+    onChange(newSelection);
   };
   
   return (

@@ -5,15 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { QuestionRenderer } from "@/components/QuestionRenderer";
-import { Question, Test } from "@/types/question";
+import { Question, Test, QuestionAnswer } from "@/types/question";
 
 interface TestQuestionViewProps {
   test: Test;
   studentName: string;
   currentQuestionIndex: number;
   testQuestions: Question[];
-  answer: string;
-  setAnswer: (answer: string) => void;
+  answer: QuestionAnswer;
+  setAnswer: (answer: QuestionAnswer) => void;
   submitting: boolean;
   handleAnswerSubmit: () => void;
 }

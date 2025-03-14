@@ -6,6 +6,7 @@ import { ErrorView } from "@/components/test/ErrorView";
 import { StudentNameForm } from "@/components/test/StudentNameForm";
 import { TestQuestionView } from "@/components/test/TestQuestionView";
 import { toast } from "@/hooks/use-toast";
+import { QuestionAnswer } from "@/types/question";
 
 const TestTaking = () => {
   const { testId } = useParams();
@@ -70,8 +71,8 @@ const TestTaking = () => {
       studentName={studentName}
       currentQuestionIndex={currentQuestionIndex}
       testQuestions={testQuestions}
-      answer={answer}
-      setAnswer={setAnswer}
+      answer={answer as QuestionAnswer}
+      setAnswer={(newValue: QuestionAnswer) => setAnswer(newValue)}
       submitting={submitting}
       handleAnswerSubmit={() => {
         if (validateAnswer(currentQuestion)) {

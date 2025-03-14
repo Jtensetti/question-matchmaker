@@ -1,12 +1,12 @@
 
 import React from "react";
 import { Slider } from "@/components/ui/slider";
-import { Question } from "@/types/question";
+import { Question, RatingAnswer } from "@/types/question";
 
 interface RatingQuestionProps {
   question: Question;
-  value: string;
-  onChange: (value: string) => void;
+  value: RatingAnswer | string; // Accept both for backward compatibility
+  onChange: (value: RatingAnswer) => void;
   disabled?: boolean;
 }
 
@@ -19,8 +19,10 @@ export const RatingQuestion: React.FC<RatingQuestionProps> = ({
   const min = question.ratingMin ?? 1;
   const max = question.ratingMax ?? 10;
   
-  // Parse the string value to number for the slider
-  const currentValue = value ? parseInt(value) : min;
+  // Ensure we're working with a number
+  const currentValue = typeof value === 'string' 
+    ? (value ? parseInt(value) : min) 
+    : (value ?? min);
   
   return (
     <div className="space-y-4">
@@ -33,7 +35,7 @@ export const RatingQuestion: React.FC<RatingQuestionProps> = ({
           min={min}
           max={max}
           step={1}
-          onValueChange={(values) => onChange(values[0].toString())}
+          onValueChange={(values) => onChange(values[0])}
           disabled={disabled}
         />
         <div className="flex justify-between mt-2 text-sm text-muted-foreground">

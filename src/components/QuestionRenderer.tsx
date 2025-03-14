@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Question } from "@/types/question";
+import { Question, QuestionAnswer, GridAnswer, RatingAnswer } from "@/types/question";
 import { TextQuestion } from "./question-types/TextQuestion";
 import { MultipleChoiceQuestion } from "./question-types/MultipleChoiceQuestion";
 import { RatingQuestion } from "./question-types/RatingQuestion";
@@ -8,8 +8,8 @@ import { GridQuestion } from "./question-types/GridQuestion";
 
 interface QuestionRendererProps {
   question: Question;
-  value: string;
-  onChange: (value: string) => void;
+  value: QuestionAnswer | string;
+  onChange: (value: QuestionAnswer) => void;
   disabled?: boolean;
 }
 
@@ -27,8 +27,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       return (
         <MultipleChoiceQuestion 
           question={question} 
-          value={value} 
-          onChange={onChange} 
+          value={value as string} 
+          onChange={(newValue) => onChange(newValue)} 
           disabled={disabled} 
         />
       );
@@ -37,7 +37,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         <RatingQuestion 
           question={question} 
           value={value} 
-          onChange={onChange} 
+          onChange={(newValue) => onChange(newValue as RatingAnswer)} 
           disabled={disabled} 
         />
       );
@@ -46,7 +46,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         <GridQuestion 
           question={question} 
           value={value} 
-          onChange={onChange} 
+          onChange={(newValue) => onChange(newValue as GridAnswer)} 
           disabled={disabled} 
         />
       );
@@ -55,8 +55,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       return (
         <TextQuestion 
           question={question} 
-          value={value} 
-          onChange={onChange} 
+          value={value as string} 
+          onChange={(newValue) => onChange(newValue)} 
           disabled={disabled} 
         />
       );

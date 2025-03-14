@@ -2,7 +2,7 @@
 export interface Question {
   id: string;
   text: string;
-  answer: string;
+  answer: string; // We'll keep this as string for database storage
   createdAt: Date;
   similarityThreshold?: number;
   semanticMatching?: boolean;
@@ -33,3 +33,12 @@ export interface Test {
   questions?: Question[];
   teacherId?: string;
 }
+
+// New type definitions for strongly typed question answers
+export type RatingAnswer = number;
+export type MultipleChoiceAnswer = string;
+export type TextAnswer = string;
+export type GridAnswer = { row: string; column: string };
+
+// Union type for all possible answer types
+export type QuestionAnswer = RatingAnswer | MultipleChoiceAnswer | TextAnswer | GridAnswer;

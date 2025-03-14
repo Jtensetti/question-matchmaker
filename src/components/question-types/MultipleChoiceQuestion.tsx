@@ -1,13 +1,13 @@
 
 import React from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Question } from "@/types/question";
+import { Question, MultipleChoiceAnswer } from "@/types/question";
 import { Label } from "@/components/ui/label";
 
 interface MultipleChoiceQuestionProps {
   question: Question;
-  value: string;
-  onChange: (value: string) => void;
+  value: MultipleChoiceAnswer; 
+  onChange: (value: MultipleChoiceAnswer) => void;
   disabled?: boolean;
 }
 
