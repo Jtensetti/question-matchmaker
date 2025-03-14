@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,11 +44,14 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [gridAnswers, setGridAnswers] = useState<Record<string, string>>({});
 
-  // Debug the question object
-  console.log("Question in QuestionCard:", {
+  const questionType = typeof question.questionType === 'object' 
+    ? (question.questionType as any)?.value || 'text' 
+    : question.questionType || 'text';
+
+  console.log("Question in QuestionCard with fixed type:", {
     id: question.id,
     text: question.text,
-    questionType: question.questionType,
+    questionType,
     options: question.options,
     ratingMin: question.ratingMin,
     ratingMax: question.ratingMax,
@@ -58,7 +60,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   });
 
   const handleSubmitAnswer = async () => {
-    if (question.questionType === "rating") {
+    if (questionType === "rating") {
       if (ratingValue === null) {
         toast({
           title: "Tomt svar",
@@ -76,7 +78,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       setUserAnswer(ratingValue.toString());
       
       if (!isTeacher) {
-        // Save answer to database if not in teacher mode
         await saveStudentAnswer(ratingValue.toString());
       }
       
@@ -96,7 +97,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       return;
     }
     
-    if (question.questionType === "multiple-choice") {
+    if (questionType === "multiple-choice") {
       if (!selectedOption) {
         toast({
           title: "Tomt svar",
@@ -132,7 +133,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       return;
     }
     
-    if (question.questionType === "checkbox") {
+    if (questionType === "checkbox") {
       if (selectedOptions.length === 0) {
         toast({
           title: "Tomt svar",
@@ -142,7 +143,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         return;
       }
       
-      // For checkboxes, convert the answer to array for comparison
       const correctOptions = question.answer.split(",").map(opt => opt.trim());
       const correctCount = selectedOptions.filter(opt => correctOptions.includes(opt)).length;
       const isExactlyCorrect = 
@@ -173,7 +173,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       return;
     }
     
-    if (question.questionType === "grid") {
+    if (questionType === "grid") {
       if (Object.keys(gridAnswers).length === 0) {
         toast({
           title: "Tomt svar",
@@ -183,10 +183,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         return;
       }
       
-      // For grid questions, we need to compare with the expected grid answers
-      // This is simplified and would need more logic for actual comparison
       const answerString = JSON.stringify(gridAnswers);
-      setIsCorrect(false); // Just a placeholder, actual logic would be more complex
+      setIsCorrect(false);
       setIsSubmitted(true);
       setUserAnswer(answerString);
       
@@ -202,7 +200,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       return;
     }
     
-    // Default text question handling
     if (!userAnswer.trim()) {
       toast({
         title: "Tomt svar",
@@ -220,10 +217,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Calculate similarity with improved semantic matching
       const threshold = question.similarityThreshold || 0.7;
       
-      // First, calculate similarity score
       const calculatedSimilarity = await checkSemanticMatch(
         userAnswer.trim(),
         question.answer.trim(),
@@ -232,13 +227,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       
       setSimilarity(calculatedSimilarity);
       
-      // Determine if the answer is correct based on similarity threshold
       const correct = calculatedSimilarity >= threshold;
       
       setIsCorrect(correct);
       setIsSubmitted(true);
 
-      // Save answer to database if not in teacher mode
       if (!isTeacher) {
         await saveStudentAnswer(userAnswer.trim());
       }
@@ -351,7 +344,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           <div className="relative h-10">
             <div className="absolute top-4 left-0 right-0 h-2 bg-gray-300 rounded-full"></div>
             
-            {/* User's selected value */}
             <div 
               className="absolute top-2 h-6 w-6 bg-primary rounded-full shadow transform -translate-x-1/2"
               style={{ 
@@ -359,7 +351,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               }}
             ></div>
             
-            {/* Correct value */}
             <div 
               className="absolute top-2 h-6 w-6 bg-green-500 rounded-full shadow-md transform -translate-x-1/2 flex items-center justify-center"
               style={{ 
@@ -455,7 +446,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       );
     }
     
-    // Convert answer to array for comparison
     const correctOptions = question.answer.split(",").map(opt => opt.trim());
     
     return (
@@ -566,13 +556,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   };
   
   const renderFillinBlanks = () => {
-    if (question.questionType !== "text") return null;
+    if (questionType !== "text") return null;
     
-    // Check if this is a fill-in-the-blank question (contains ___ or [...])
     const blankRegex = /___+|\[\.\.\.+\]/g;
     if (!blankRegex.test(question.text)) return null;
     
-    // Replace blanks with input fields
     const parts = question.text.split(blankRegex);
     const blanks = question.text.match(blankRegex) || [];
     
@@ -595,9 +583,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     );
   };
 
-  // Helper function to render the appropriate question input based on type
   const renderQuestionInput = () => {
-    switch (question.questionType) {
+    switch (questionType) {
       case "rating":
         return renderRatingScale();
       case "multiple-choice":
@@ -639,12 +626,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               </div>
             )}
             <p className="font-medium">{question.text}</p>
-            {(isTeacher || isAdmin) && question.questionType !== "rating" && (
+            {(isTeacher || isAdmin) && questionType !== "rating" && (
               <p className="text-sm text-muted-foreground mt-1">
                 Svar: {question.answer}
               </p>
             )}
-            {(isTeacher || isAdmin) && question.questionType === "rating" && (
+            {(isTeacher || isAdmin) && questionType === "rating" && (
               <p className="text-sm text-muted-foreground mt-1">
                 Korrekt värde: {question.answer} (Min: {question.ratingMin}, Max: {question.ratingMax})
               </p>
@@ -652,7 +639,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             
             {(isTeacher || isAdmin) && (
               <div className="flex items-center mt-2 text-xs text-muted-foreground">
-                <span className="mr-2">Frågetyp: {question.questionType || "text"}</span>
+                <span className="mr-2">Frågetyp: {questionType || "text"}</span>
                 
                 <TooltipProvider>
                   <Tooltip>
@@ -665,7 +652,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                       <p className="font-semibold mb-1">Frågedetaljer:</p>
                       <ul className="list-disc pl-4 space-y-1">
                         <li>ID: {question.id}</li>
-                        <li>Typ: {question.questionType || "text"}</li>
+                        <li>Typ: {questionType || "text"}</li>
                         {question.options && <li>Alternativ: {question.options.join(", ")}</li>}
                         {question.ratingMin && <li>Min: {question.ratingMin}</li>}
                         {question.ratingMax && <li>Max: {question.ratingMax}</li>}
@@ -679,7 +666,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             )}
           </div>
           
-          {/* Display question inputs based on question type */}
           {renderQuestionInput()}
           
           {!isSubmitted ? (
@@ -724,7 +710,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             )
           ) : (
             <div className="space-y-4 mt-4">
-              {question.questionType === "text" && !renderFillinBlanks() && (
+              {questionType === "text" && !renderFillinBlanks() && (
                 <>
                   <div className="flex items-center space-x-2">
                     <p className="font-medium">Ditt svar:</p>
@@ -764,9 +750,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </>
               )}
               
-              {(question.questionType === "multiple-choice" || 
-                question.questionType === "checkbox" || 
-                question.questionType === "rating") && (
+              {(questionType === "multiple-choice" || 
+                questionType === "checkbox" || 
+                questionType === "rating") && (
                 <div className="flex items-center space-x-2">
                   <p className="font-medium">Resultat:</p>
                   {isCorrect ? (

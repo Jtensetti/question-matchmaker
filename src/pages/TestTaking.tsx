@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
@@ -135,7 +134,6 @@ const TestTaking = () => {
   }, [testId, navigate]);
 
   useEffect(() => {
-    // Reset all answer inputs when question changes
     setAnswer("");
     setRatingValue(null);
     setSelectedOption("");
@@ -173,7 +171,6 @@ const TestTaking = () => {
     const currentQuestion = testQuestions[currentQuestionIndex];
     let answerToSubmit = "";
     
-    // Validate and prepare answer based on question type
     switch (currentQuestion.questionType) {
       case "rating":
         if (ratingValue === null) {
@@ -224,7 +221,6 @@ const TestTaking = () => {
         break;
         
       default:
-        // text questions
         if (!answer.trim()) {
           toast({
             title: "Answer required",
@@ -309,7 +305,11 @@ const TestTaking = () => {
     
     const currentQuestion = testQuestions[currentQuestionIndex];
     
-    switch (currentQuestion.questionType) {
+    const questionType = typeof currentQuestion.questionType === 'object' 
+      ? (currentQuestion.questionType as any)?.value || 'text' 
+      : currentQuestion.questionType || 'text';
+    
+    switch (questionType) {
       case "rating":
         return renderRatingScale();
         

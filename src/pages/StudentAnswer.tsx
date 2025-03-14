@@ -219,9 +219,14 @@ const StudentAnswer = () => {
   const renderQuestionInput = () => {
     if (!question) return null;
     
-    console.log("Rendering input for question type:", question.questionType);
+    // Ensure questionType is a string, not an object
+    const questionType = typeof question.questionType === 'object' 
+      ? (question.questionType as any)?.value || 'text' 
+      : question.questionType || 'text';
     
-    switch (question.questionType) {
+    console.log("Rendering input for question type:", questionType);
+    
+    switch (questionType) {
       case "rating":
         return renderRatingScale();
         
