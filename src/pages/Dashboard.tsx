@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle, ArrowLeft, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Question, StudentAnswer } from "@/types/question";
+import { Question, StudentAnswer, QuestionType } from "@/types/question";
 import { 
   Table, 
   TableHeader, 
@@ -53,7 +53,13 @@ const Dashboard = () => {
             answer: questionData.answer,
             createdAt: new Date(questionData.created_at),
             similarityThreshold: questionData.similarity_threshold || 0.7,
-            semanticMatching: questionData.semantic_matching !== false
+            semanticMatching: questionData.semantic_matching !== false,
+            questionType: questionData.question_type as QuestionType || 'text',
+            options: questionData.options,
+            ratingMin: questionData.rating_min,
+            ratingMax: questionData.rating_max,
+            gridRows: questionData.grid_rows,
+            gridColumns: questionData.grid_columns
           };
           setQuestion(questionObj);
           
@@ -69,13 +75,40 @@ const Dashboard = () => {
           if (answersData) {
             // Process the answers and determine if they're correct
             const processedAnswers: StudentAnswer[] = answersData.map((ans: SupabaseStudentAnswer) => {
-              // Use the synchronous version for type compatibility
-              const correct = questionObj ? isAnswerCorrect(
-                ans.answer, 
-                questionObj.answer, 
-                questionObj.similarityThreshold || 0.7,
-                questionObj.semanticMatching !== false
-              ) : false;
+              // Check if answer is correct based on question type
+              let isCorrect = false;
+              
+              switch (questionObj.questionType) {
+                case 'text':
+                  // For text questions, use semantic matching
+                  isCorrect = isAnswerCorrect(
+                    ans.answer, 
+                    questionObj.answer, 
+                    questionObj.similarityThreshold || 0.7,
+                    questionObj.semanticMatching !== false
+                  );
+                  break;
+                case 'multiple-choice':
+                  // For multiple choice, direct comparison
+                  isCorrect = ans.answer === questionObj.answer;
+                  break;
+                case 'rating':
+                  // For rating, check if the rating matches
+                  isCorrect = ans.answer === questionObj.answer;
+                  break;
+                case 'grid':
+                  // For grid, compare the grid selections
+                  isCorrect = ans.answer === questionObj.answer;
+                  break;
+                default:
+                  // Default to semantic matching
+                  isCorrect = isAnswerCorrect(
+                    ans.answer, 
+                    questionObj.answer, 
+                    questionObj.similarityThreshold || 0.7,
+                    true
+                  );
+              }
               
               return {
                 id: ans.id,
@@ -83,7 +116,7 @@ const Dashboard = () => {
                 studentName: ans.student_name,
                 answer: ans.answer,
                 submittedAt: new Date(ans.submitted_at),
-                isCorrect: correct
+                isCorrect
               };
             });
             
@@ -112,6 +145,34 @@ const Dashboard = () => {
     fetchQuestionAndAnswers();
   }, [questionId, navigate]);
 
+  // Format answer display based on question type
+  const formatAnswer = (answer: string, questionType?: QuestionType) => {
+    if (!questionType || questionType === 'text') {
+      return answer;
+    }
+    
+    switch (questionType) {
+      case 'multiple-choice':
+        return answer;
+      case 'rating':
+        return `Rating: ${answer}`;
+      case 'grid':
+        // Format grid answers as "Row → Column, Row → Column, ..."
+        try {
+          return answer.split(',')
+            .map(pair => {
+              const [row, col] = pair.split(':');
+              return `${row} → ${col}`;
+            })
+            .join(', ');
+        } catch (e) {
+          return answer;
+        }
+      default:
+        return answer;
+    }
+  };
+
   const exportToCSV = () => {
     if (!question || !answers.length) return;
     
@@ -119,7 +180,7 @@ const Dashboard = () => {
     const headers = ['Student Name', 'Answer', 'Submitted At', 'Correct?'];
     const rows = answers.map(ans => [
       ans.studentName,
-      ans.answer,
+      formatAnswer(ans.answer, question.questionType),
       new Date(ans.submittedAt).toLocaleString(),
       ans.isCorrect ? 'Yes' : 'No'
     ]);
@@ -142,6 +203,32 @@ const Dashboard = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Get the correct answer display based on question type
+  const getCorrectAnswerDisplay = () => {
+    if (!question) return '';
+    
+    switch (question.questionType) {
+      case 'multiple-choice':
+        return question.answer;
+      case 'rating':
+        return `Rating: ${question.answer}`;
+      case 'grid':
+        try {
+          return question.answer.split(',')
+            .map(pair => {
+              const [row, col] = pair.split(':');
+              return `${row} → ${col}`;
+            })
+            .join(', ');
+        } catch (e) {
+          return question.answer;
+        }
+      case 'text':
+      default:
+        return question.answer;
+    }
   };
 
   if (loading) {
@@ -201,9 +288,14 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <h1 className="text-2xl font-bold">Dashboard: {question.text}</h1>
-            <p className="text-muted-foreground">
-              Correct Answer: {question.answer}
-            </p>
+            <div className="space-y-1">
+              <p className="text-muted-foreground">
+                <span className="font-medium">Type:</span> {question.questionType || 'Text'}
+              </p>
+              <p className="text-muted-foreground">
+                <span className="font-medium">Correct Answer:</span> {getCorrectAnswerDisplay()}
+              </p>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -250,7 +342,7 @@ const Dashboard = () => {
                     {answers.map((ans) => (
                       <TableRow key={ans.id}>
                         <TableCell className="font-medium">{ans.studentName}</TableCell>
-                        <TableCell>{ans.answer}</TableCell>
+                        <TableCell>{formatAnswer(ans.answer, question.questionType)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(ans.submittedAt).toLocaleString()}
                         </TableCell>
