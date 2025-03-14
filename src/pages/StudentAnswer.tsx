@@ -4,6 +4,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle, AlignLeft, AlignRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +24,9 @@ const StudentAnswer = () => {
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   const [captchaQuestion, setCaptchaQuestion] = useState("");
   const [ratingValue, setRatingValue] = useState<number | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [selectedOption, setSelectedOption] = useState<string>("");
+  const [gridAnswers, setGridAnswers] = useState<Record<string, string>>({});
   
   // Simple captcha generation
   const generateCaptcha = () => {
@@ -95,24 +102,69 @@ const StudentAnswer = () => {
       return;
     }
     
-    // For rating question type
-    if (question.questionType === "rating") {
-      if (ratingValue === null) {
-        toast({
-          title: "Answer required",
-          description: "Please select a value on the scale.",
-          variant: "destructive",
-        });
-        return;
-      }
-    } else if (!answer.trim()) {
-      // For other question types
-      toast({
-        title: "Answer required",
-        description: "Please provide an answer to the question.",
-        variant: "destructive",
-      });
-      return;
+    let answerToSubmit = "";
+    
+    // Validate and prepare answer based on question type
+    switch (question.questionType) {
+      case "rating":
+        if (ratingValue === null) {
+          toast({
+            title: "Answer required",
+            description: "Please select a value on the scale.",
+            variant: "destructive",
+          });
+          return;
+        }
+        answerToSubmit = ratingValue.toString();
+        break;
+        
+      case "multiple-choice":
+        if (!selectedOption) {
+          toast({
+            title: "Answer required",
+            description: "Please select an option.",
+            variant: "destructive",
+          });
+          return;
+        }
+        answerToSubmit = selectedOption;
+        break;
+        
+      case "checkbox":
+        if (selectedOptions.length === 0) {
+          toast({
+            title: "Answer required",
+            description: "Please select at least one option.",
+            variant: "destructive",
+          });
+          return;
+        }
+        answerToSubmit = JSON.stringify(selectedOptions);
+        break;
+        
+      case "grid":
+        if (Object.keys(gridAnswers).length === 0) {
+          toast({
+            title: "Answer required",
+            description: "Please fill in at least one grid cell.",
+            variant: "destructive",
+          });
+          return;
+        }
+        answerToSubmit = JSON.stringify(gridAnswers);
+        break;
+        
+      default:
+        // text questions
+        if (!answer.trim()) {
+          toast({
+            title: "Answer required",
+            description: "Please provide an answer to the question.",
+            variant: "destructive",
+          });
+          return;
+        }
+        answerToSubmit = answer;
     }
     
     if (captchaAnswer !== expectedCaptchaAnswer) {
@@ -136,9 +188,7 @@ const StudentAnswer = () => {
           { 
             question_id: question.id, 
             student_name: studentName,
-            answer: question.questionType === "rating" 
-              ? ratingValue!.toString() 
-              : answer
+            answer: answerToSubmit
           }
         ]);
 
@@ -164,54 +214,171 @@ const StudentAnswer = () => {
     }
   };
   
+  const renderQuestionInput = () => {
+    if (!question) return null;
+    
+    switch (question.questionType) {
+      case "rating":
+        return renderRatingScale();
+        
+      case "multiple-choice":
+        return renderMultipleChoice();
+        
+      case "checkbox":
+        return renderCheckboxes();
+        
+      case "grid":
+        return renderGrid();
+        
+      case "text":
+      default:
+        return (
+          <Input
+            id="answer"
+            placeholder="Type your answer here"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            disabled={submitting}
+          />
+        );
+    }
+  };
+  
   const renderRatingScale = () => {
     if (!question?.ratingMin || !question?.ratingMax) return null;
     
     const min = question.ratingMin;
     const max = question.ratingMax;
+    const step = 1;
     
     return (
-      <div className="space-y-4 mt-4">
-        <div className="flex justify-between">
+      <div className="space-y-4">
+        <div className="flex justify-between text-sm text-muted-foreground mb-2">
           <div className="flex items-center">
-            <AlignLeft className="h-5 w-5 mr-1" />
+            <AlignLeft className="h-4 w-4 mr-1" />
             <span>{min}</span>
           </div>
           <div className="flex items-center">
             <span>{max}</span>
-            <AlignRight className="h-5 w-5 ml-1" />
+            <AlignRight className="h-4 w-4 ml-1" />
           </div>
         </div>
         
-        <div 
-          className="relative h-10 bg-muted rounded-md cursor-pointer"
-          onClick={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const percentage = x / rect.width;
-            const newValue = Math.round(min + percentage * (max - min));
-            setRatingValue(Math.max(min, Math.min(max, newValue)));
-          }}
-        >
-          {/* Track */}
-          <div className="absolute top-4 left-0 right-0 h-2 bg-gray-300 rounded-full"></div>
-          
-          {/* User's selected value handle */}
-          {ratingValue !== null && (
-            <div 
-              className="absolute top-2 h-6 w-6 bg-primary rounded-full shadow transform -translate-x-1/2"
-              style={{ 
-                left: `${((ratingValue - min) / (max - min)) * 100}%` 
-              }}
-            ></div>
-          )}
-        </div>
+        <Slider
+          defaultValue={[min]}
+          min={min}
+          max={max}
+          step={step}
+          onValueChange={(value) => setRatingValue(value[0])}
+          disabled={submitting}
+        />
         
         {ratingValue !== null && (
-          <div className="text-center text-sm">
+          <div className="text-center mt-2">
             Your selection: <span className="font-semibold">{ratingValue}</span>
           </div>
         )}
+      </div>
+    );
+  };
+  
+  const renderMultipleChoice = () => {
+    if (!question?.options || question.options.length === 0) return null;
+    
+    return (
+      <RadioGroup 
+        value={selectedOption} 
+        onValueChange={setSelectedOption}
+        className="space-y-2"
+      >
+        {question.options.map((option, index) => (
+          <div key={index} className="flex items-center space-x-2">
+            <RadioGroupItem value={option} id={`option-${index}`} />
+            <label htmlFor={`option-${index}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              {option}
+            </label>
+          </div>
+        ))}
+      </RadioGroup>
+    );
+  };
+  
+  const renderCheckboxes = () => {
+    if (!question?.options || question.options.length === 0) return null;
+    
+    return (
+      <div className="space-y-2">
+        {question.options.map((option, index) => (
+          <div key={index} className="flex items-center space-x-2">
+            <Checkbox 
+              id={`checkbox-${index}`} 
+              checked={selectedOptions.includes(option)}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setSelectedOptions(prev => [...prev, option]);
+                } else {
+                  setSelectedOptions(prev => prev.filter(item => item !== option));
+                }
+              }}
+            />
+            <label
+              htmlFor={`checkbox-${index}`}
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              {option}
+            </label>
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
+  const renderGrid = () => {
+    if (!question?.gridRows || !question?.gridColumns || 
+        question.gridRows.length === 0 || question.gridColumns.length === 0) {
+      return null;
+    }
+    
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th className="p-2 border"></th>
+              {question.gridColumns.map((col, colIndex) => (
+                <th key={colIndex} className="p-2 border bg-muted font-medium text-sm">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {question.gridRows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                <td className="p-2 border bg-muted font-medium text-sm">
+                  {row}
+                </td>
+                {question.gridColumns?.map((col, colIndex) => {
+                  const cellId = `${row}-${col}`;
+                  return (
+                    <td key={cellId} className="p-2 border">
+                      <Input
+                        className="w-full"
+                        value={gridAnswers[cellId] || ''}
+                        onChange={(e) => {
+                          setGridAnswers(prev => ({
+                            ...prev,
+                            [cellId]: e.target.value
+                          }));
+                        }}
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   };
@@ -279,17 +446,7 @@ const StudentAnswer = () => {
                   Your Answer
                 </label>
                 
-                {question.questionType === "rating" ? (
-                  renderRatingScale()
-                ) : (
-                  <Input
-                    id="answer"
-                    placeholder="Type your answer here"
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    disabled={submitting}
-                  />
-                )}
+                {renderQuestionInput()}
               </div>
               
               <div className="p-4 bg-muted rounded-md">
