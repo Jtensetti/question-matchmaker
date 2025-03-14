@@ -5,10 +5,11 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, AlertTriangle, CheckCircle } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Test, Question } from "@/types/question";
 import { Progress } from "@/components/ui/progress";
+import { QuestionRenderer } from "@/components/QuestionRenderer";
 
 const TestTaking = () => {
   const { testId } = useParams();
@@ -60,7 +61,7 @@ const TestTaking = () => {
 
           setTest(test);
           
-          // Fetch questions for this test
+          // Fetch questions for this test - Updated to include all question fields
           const { data: testQuestionsData, error: testQuestionsError } = await supabase
             .from('test_questions')
             .select(`
@@ -74,7 +75,13 @@ const TestTaking = () => {
                 answer,
                 created_at,
                 similarity_threshold,
-                semantic_matching
+                semantic_matching,
+                question_type,
+                options,
+                grid_rows,
+                grid_columns,
+                rating_min,
+                rating_max
               )
             `)
             .eq('test_id', testId)
@@ -89,7 +96,13 @@ const TestTaking = () => {
               answer: tq.questions.answer,
               createdAt: new Date(tq.questions.created_at),
               similarityThreshold: tq.questions.similarity_threshold || 0.7,
-              semanticMatching: tq.questions.semantic_matching !== false
+              semanticMatching: tq.questions.semantic_matching !== false,
+              questionType: tq.questions.question_type || 'text',
+              options: tq.questions.options || [],
+              gridRows: tq.questions.grid_rows || [],
+              gridColumns: tq.questions.grid_columns || [],
+              ratingMin: tq.questions.rating_min,
+              ratingMax: tq.questions.rating_max
             }));
             
             setTestQuestions(questions);
@@ -316,37 +329,29 @@ const TestTaking = () => {
               <h2 className="text-xl font-semibold mb-2">{currentQuestion.text}</h2>
             </div>
             
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="answer" className="block text-sm font-medium mb-1">
-                  Your Answer
-                </label>
-                <Input
-                  id="answer"
-                  placeholder="Type your answer here"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  disabled={submitting}
-                />
-              </div>
+            <QuestionRenderer 
+              question={currentQuestion}
+              value={answer}
+              onChange={setAnswer}
+              disabled={submitting}
+            />
               
-              <Button 
-                onClick={handleAnswerSubmit} 
-                className="w-full"
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : currentQuestionIndex < testQuestions.length - 1 ? (
-                  "Next Question"
-                ) : (
-                  "Complete Test"
-                )}
-              </Button>
-            </div>
+            <Button 
+              onClick={handleAnswerSubmit} 
+              className="w-full"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : currentQuestionIndex < testQuestions.length - 1 ? (
+                "Next Question"
+              ) : (
+                "Complete Test"
+              )}
+            </Button>
           </CardContent>
           <CardFooter>
             <div className="w-full text-center text-sm text-muted-foreground">
