@@ -375,7 +375,7 @@ const StudentAnswer = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="p-4 bg-muted rounded-md">
-              <h2 className="text-xl font-semibold mb-2">{question.text}</h2>
+              <h2 className="text-xl font-semibold mb-2">{question?.text}</h2>
             </div>
             
             <div className="space-y-4">
