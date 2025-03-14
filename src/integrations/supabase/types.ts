@@ -67,6 +67,7 @@ export type Database = {
       }
       questions: {
         Row: {
+          allow_multiple_selections: boolean | null
           answer: string
           created_at: string
           grid_columns: string[] | null
@@ -82,6 +83,7 @@ export type Database = {
           text: string
         }
         Insert: {
+          allow_multiple_selections?: boolean | null
           answer: string
           created_at?: string
           grid_columns?: string[] | null
@@ -97,6 +99,7 @@ export type Database = {
           text: string
         }
         Update: {
+          allow_multiple_selections?: boolean | null
           answer?: string
           created_at?: string
           grid_columns?: string[] | null

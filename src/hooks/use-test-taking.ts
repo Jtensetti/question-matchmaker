@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -52,7 +51,6 @@ export const useTestTaking = (testId: string | undefined) => {
 
           setTest(test);
           
-          // Fixed query to properly select the questions with all their properties
           const { data: testQuestionsData, error: testQuestionsError } = await supabase
             .from('test_questions')
             .select(`
