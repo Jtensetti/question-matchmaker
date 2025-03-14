@@ -4,14 +4,13 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Question } from "@/types/question";
 import { toast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { checkSemanticMatch } from "@/utils/semanticMatching";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { QuestionInput } from "@/components/question-card/QuestionInput";
+import { StudentNameInput } from "@/components/question-card/StudentNameInput";
+import { AnswerResults } from "@/components/question-card/AnswerResults";
+import { gridSelectionsToString } from "@/components/question-card/gridUtils";
 
 interface QuestionCardProps {
   question: Question;
@@ -39,11 +38,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   );
   const [gridSelections, setGridSelections] = useState<Record<string, string>>({});
 
-  // Process grid selections into a string format compatible with the answer format
-  const gridSelectionsToString = () => {
-    return Object.entries(gridSelections)
-      .map(([row, col]) => `${row}:${col}`)
-      .join(',');
+  const handleGridCellSelect = (row: string, col: string) => {
+    setGridSelections(prev => ({
+      ...prev,
+      [row]: col
+    }));
   };
 
   const handleSubmitAnswer = async () => {
@@ -55,7 +54,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     } else if (question.questionType === "rating") {
       answerToCheck = ratingValue.toString();
     } else if (question.questionType === "grid") {
-      answerToCheck = gridSelectionsToString();
+      answerToCheck = gridSelectionsToString(gridSelections);
     }
     
     if (!answerToCheck.trim()) {
@@ -189,220 +188,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     setSimilarity(0);
   };
 
-  // Handler for selecting a cell in the grid
-  const handleGridCellSelect = (row: string, col: string) => {
-    setGridSelections(prev => ({
-      ...prev,
-      [row]: col
-    }));
-  };
-
-  // Render the appropriate input based on question type
-  const renderQuestionInput = () => {
-    if (isSubmitted) {
-      return null;
-    }
-
-    if (showNameInput) {
-      return (
-        <div className="space-y-2">
-          <label htmlFor="studentName" className="text-sm font-medium">
-            Ditt namn
-          </label>
-          <Input
-            id="studentName"
-            value={studentName}
-            onChange={e => setStudentName(e.target.value)}
-            placeholder="Ange ditt namn"
-            className="mt-1"
-          />
-          <div className="flex space-x-2 mt-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowNameInput(false)}
-            >
-              Avbryt
-            </Button>
-            <Button 
-              size="sm"
-              onClick={handleSaveStudent}
-            >
-              Fortsätt
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    switch (question.questionType) {
-      case "multiple-choice":
-        return (
-          <RadioGroup 
-            value={selectedRadioOption} 
-            onValueChange={setSelectedRadioOption}
-            className="space-y-2"
-          >
-            {question.options?.map((option, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <RadioGroupItem value={option} id={`option-${index}`} />
-                <Label htmlFor={`option-${index}`}>{option}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        );
-      
-      case "rating":
-        const min = question.ratingMin !== undefined ? question.ratingMin : 1;
-        const max = question.ratingMax !== undefined ? question.ratingMax : 5;
-        
-        return (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>{min}</span>
-              <span>{max}</span>
-            </div>
-            <Slider
-              value={[ratingValue]}
-              min={min}
-              max={max}
-              step={1}
-              onValueChange={(values) => setRatingValue(values[0])}
-            />
-            <div className="text-center font-medium mt-2">
-              Valt värde: {ratingValue}
-            </div>
-          </div>
-        );
-      
-      case "grid":
-        if (!question.gridRows?.length || !question.gridColumns?.length) {
-          return <p className="text-muted-foreground">Rutnätsmatchning saknar data</p>;
-        }
-        
-        return (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]"></TableHead>
-                  {question.gridColumns.map((col, colIndex) => (
-                    <TableHead key={colIndex} className="text-center">
-                      {col}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {question.gridRows.map((row, rowIndex) => (
-                  <TableRow key={rowIndex}>
-                    <TableCell className="font-medium">{row}</TableCell>
-                    {question.gridColumns?.map((col, colIndex) => (
-                      <TableCell key={colIndex} className="text-center p-2">
-                        <div 
-                          className={`h-6 w-6 rounded-full mx-auto cursor-pointer border ${
-                            gridSelections[row] === col 
-                              ? 'bg-primary border-primary' 
-                              : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                          onClick={() => handleGridCellSelect(row, col)}
-                        />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        );
-        
-      case "text":
-      default:
-        return (
-          <Input
-            value={userAnswer}
-            onChange={e => setUserAnswer(e.target.value)}
-            placeholder="Ditt svar..."
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmitAnswer();
-              }
-            }}
-          />
-        );
-    }
-  };
-
-  // Render the submitted answer info
-  const renderSubmittedAnswer = () => {
-    if (!isSubmitted) {
-      return null;
-    }
-
-    let displayedAnswer = "";
-    
-    if (question.questionType === "multiple-choice") {
-      displayedAnswer = selectedRadioOption;
-    } else if (question.questionType === "rating") {
-      displayedAnswer = ratingValue.toString();
-    } else if (question.questionType === "grid") {
-      displayedAnswer = Object.entries(gridSelections)
-        .map(([row, col]) => `${row} → ${col}`)
-        .join(', ');
-    } else {
-      displayedAnswer = userAnswer;
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <p className="font-medium">Ditt svar:</p>
-          <p className="text-muted-foreground">{displayedAnswer}</p>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <p className="font-medium">Resultat:</p>
-          {isCorrect ? (
-            <div className="flex items-center text-green-600">
-              <CheckCircle className="h-5 w-5 mr-1" />
-              <span>Rätt</span>
-            </div>
-          ) : (
-            <div className="flex items-center text-red-600">
-              <XCircle className="h-5 w-5 mr-1" />
-              <span>Fel</span>
-            </div>
-          )}
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <p className="font-medium">Likhet:</p>
-          <div className="flex items-center">
-            <span className={similarity >= 0.5 ? "text-green-600" : "text-red-600"}>
-              {Math.round(similarity * 100)}%
-            </span>
-          </div>
-        </div>
-        
-        {!isCorrect && (
-          <div className="flex items-center space-x-2">
-            <p className="font-medium">Rätt svar:</p>
-            <p className="text-muted-foreground">{question.answer}</p>
-          </div>
-        )}
-        
-        <Button 
-          variant="outline" 
-          onClick={resetQuestion} 
-          className="w-full"
-        >
-          Försök igen
-        </Button>
-      </div>
-    );
-  };
-
   return (
     <Card className="w-full">
       <CardContent className="pt-6">
@@ -424,19 +209,48 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           
           {!isSubmitted ? (
             <div className="space-y-2">
-              {renderQuestionInput()}
-              {!showNameInput && (
-                <Button 
-                  onClick={handleSubmitAnswer} 
-                  className="w-full mt-4"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Kontrollerar...' : 'Svara'}
-                </Button>
+              {showNameInput ? (
+                <StudentNameInput
+                  studentName={studentName}
+                  setStudentName={setStudentName}
+                  onCancel={() => setShowNameInput(false)}
+                  onSave={handleSaveStudent}
+                />
+              ) : (
+                <>
+                  <QuestionInput
+                    question={question}
+                    userAnswer={userAnswer}
+                    setUserAnswer={setUserAnswer}
+                    selectedRadioOption={selectedRadioOption}
+                    setSelectedRadioOption={setSelectedRadioOption}
+                    ratingValue={ratingValue}
+                    setRatingValue={setRatingValue}
+                    gridSelections={gridSelections}
+                    handleGridCellSelect={handleGridCellSelect}
+                    onSubmit={handleSubmitAnswer}
+                  />
+                  <Button 
+                    onClick={handleSubmitAnswer} 
+                    className="w-full mt-4"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Kontrollerar...' : 'Svara'}
+                  </Button>
+                </>
               )}
             </div>
           ) : (
-            renderSubmittedAnswer()
+            <AnswerResults
+              question={question}
+              userAnswer={userAnswer}
+              selectedRadioOption={selectedRadioOption}
+              ratingValue={ratingValue}
+              gridSelections={gridSelections}
+              isCorrect={isCorrect}
+              similarity={similarity}
+              onReset={resetQuestion}
+            />
           )}
         </div>
       </CardContent>
