@@ -11,6 +11,10 @@ type ForgotPasswordFormProps = {
   onBack: () => void;
 };
 
+// Get Supabase URL from the client - we know these values from the client.ts file
+const SUPABASE_URL = "https://ssamctnybxlvwrrlfbmz.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYW1jdG55YnhsdndycmxmYm16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkzNDYxMzUsImV4cCI6MjA1NDkyMjEzNX0.qyr63Do8EbDwuRSsNmYCy4ay9b8r-OfrKohCkTZAduM";
+
 export const ForgotPasswordForm = ({ onBack }: ForgotPasswordFormProps) => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -31,12 +35,12 @@ export const ForgotPasswordForm = ({ onBack }: ForgotPasswordFormProps) => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/reset-password`,
+        `${SUPABASE_URL}/functions/v1/reset-password`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${supabase.supabaseKey}`,
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ email: email.toLowerCase().trim() }),
         }

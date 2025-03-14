@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+// Get Supabase URL and key constants
+const SUPABASE_URL = "https://ssamctnybxlvwrrlfbmz.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYW1jdG55YnhsdndycmxmYm16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkzNDYxMzUsImV4cCI6MjA1NDkyMjEzNX0.qyr63Do8EbDwuRSsNmYCy4ay9b8r-OfrKohCkTZAduM";
 
 export const ResetPasswordForm = () => {
   const { token } = useParams<{ token: string }>();
@@ -57,12 +60,12 @@ export const ResetPasswordForm = () => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/update-password`,
+        `${SUPABASE_URL}/functions/v1/update-password`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${supabase.supabaseKey}`,
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ token, password }),
         }
