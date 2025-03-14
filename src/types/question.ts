@@ -7,13 +7,6 @@ export interface Question {
   similarityThreshold?: number;
   semanticMatching?: boolean;
   teacherId?: string;
-  questionType?: string;
-  options?: string[];
-  gridRows?: string[];
-  gridColumns?: string[];
-  ratingMin?: number;
-  ratingMax?: number;
-  ratingCorrect?: number;
 }
 
 export interface StudentAnswer {
