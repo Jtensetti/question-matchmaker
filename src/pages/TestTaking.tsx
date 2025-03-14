@@ -72,7 +72,7 @@ const TestTaking = () => {
       currentQuestionIndex={currentQuestionIndex}
       testQuestions={testQuestions}
       answer={answer}
-      setAnswer={setAnswer}
+      setAnswer={(newAnswer: QuestionAnswer) => setAnswer(newAnswer)}
       submitting={submitting}
       handleAnswerSubmit={() => {
         if (validateAnswer(currentQuestion)) {

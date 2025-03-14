@@ -123,9 +123,8 @@ export const useTestTaking = (testId: string | undefined) => {
     fetchTest();
   }, [testId, navigate]);
 
-  // Reset answer when changing questions
+  // Initialize answer based on question type when changing questions
   useEffect(() => {
-    // Initialize answer based on question type
     const question = testQuestions[currentQuestionIndex];
     if (question) {
       switch (question.questionType) {
