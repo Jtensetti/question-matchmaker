@@ -20,7 +20,8 @@ export const updateQuestionType = async (
     
     console.log("Updating question type, input vs normalized:", {
       original: questionType,
-      normalized: normalizedType
+      normalized: normalizedType,
+      typeOfOriginal: typeof questionType
     });
     
     // Validate the normalized type
@@ -57,7 +58,7 @@ export const updateQuestionType = async (
     }
     
     const updateData: any = {
-      question_type: normalizedType
+      question_type: normalizedType // Store as plain string
     };
     
     // Only include properties that are relevant to the question type
@@ -78,7 +79,8 @@ export const updateQuestionType = async (
     console.log('Updating question type with data:', {
       id: questionId, 
       type: normalizedType, 
-      data: updateData
+      data: updateData,
+      dataType: typeof updateData.question_type
     });
     
     const { error } = await supabase
@@ -160,10 +162,17 @@ export const getQuestionType = async (questionId: string) => {
       
     if (error) throw error;
     
+    // Check what's coming directly from the database before normalizing
+    console.log('Raw question type from database:', {
+      id: questionId,
+      rawType: data.question_type,
+      typeOfRaw: typeof data.question_type
+    });
+    
     // Normalize the question type from the database
     const normalizedType = normalizeQuestionType(data.question_type);
     
-    console.log('Retrieved question type:', {
+    console.log('Retrieved question type after normalization:', {
       id: questionId,
       rawType: data.question_type,
       normalizedType: normalizedType
