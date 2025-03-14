@@ -806,7 +806,7 @@ const Index = () => {
             </div>
           </div>
           <DialogFooter>
-            <AlertDialogAction 
+            <Button 
               onClick={checkAdminPassword}
               disabled={isCheckingPassword}
               className="bg-amber-600 hover:bg-amber-700"
@@ -819,7 +819,7 @@ const Index = () => {
               ) : (
                 "Fortsätt"
               )}
-            </AlertDialogAction>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

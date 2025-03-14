@@ -419,7 +419,7 @@ export const TeacherManagement = () => {
               />
             </div>
           </div>
-          <SheetFooter>
+          <SheetFooter className="sm:justify-end">
             <SheetClose asChild>
               <Button variant="outline">Avbryt</Button>
             </SheetClose>
@@ -469,7 +469,7 @@ export const TeacherManagement = () => {
               />
             </div>
           </div>
-          <SheetFooter>
+          <SheetFooter className="sm:justify-end">
             <SheetClose asChild>
               <Button variant="outline">Avbryt</Button>
             </SheetClose>
