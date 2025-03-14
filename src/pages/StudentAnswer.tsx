@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -55,7 +54,7 @@ const StudentAnswer = () => {
 
         if (data) {
           // Properly convert database fields to our Question type
-          setQuestion({
+          const questionData: Question = {
             id: data.id,
             text: data.text,
             answer: data.answer,
@@ -66,21 +65,14 @@ const StudentAnswer = () => {
             options: Array.isArray(data.options) ? data.options : [],
             gridRows: Array.isArray(data.grid_rows) ? data.grid_rows : [],
             gridColumns: Array.isArray(data.grid_columns) ? data.grid_columns : [],
-            ratingMin: typeof data.rating_min === 'number' ? data.rating_min : null,
-            ratingMax: typeof data.rating_max === 'number' ? data.rating_max : null,
-            ratingCorrect: parseInt(data.answer)
-          });
+            ratingMin: typeof data.rating_min === 'number' ? data.rating_min : undefined,
+            ratingMax: typeof data.rating_max === 'number' ? data.rating_max : undefined,
+            ratingCorrect: data.answer ? parseInt(data.answer) : undefined
+          };
           
-          console.log("Converted question object:", {
-            id: data.id,
-            text: data.text,
-            questionType: data.question_type,
-            options: data.options,
-            gridRows: data.grid_rows,
-            gridColumns: data.grid_columns,
-            ratingMin: data.rating_min,
-            ratingMax: data.rating_max
-          });
+          setQuestion(questionData);
+          
+          console.log("Converted question object:", questionData);
         } else {
           toast({
             title: "Question not found",
@@ -290,7 +282,7 @@ const StudentAnswer = () => {
   
   const renderRatingScale = () => {
     if (!question?.ratingMin || !question?.ratingMax) {
-      console.log("Missing rating min/max:", question);
+      console.error("Missing rating min/max:", question);
       return (
         <div className="p-4 bg-red-100 rounded-md">
           <p>This question is missing rating scale information.</p>
@@ -335,7 +327,7 @@ const StudentAnswer = () => {
   
   const renderMultipleChoice = () => {
     if (!question?.options || question.options.length === 0) {
-      console.log("Missing options for multiple choice:", question);
+      console.error("Missing options for multiple choice:", question);
       return (
         <div className="p-4 bg-red-100 rounded-md">
           <p>This multiple choice question is missing options.</p>
@@ -363,7 +355,7 @@ const StudentAnswer = () => {
   
   const renderCheckboxes = () => {
     if (!question?.options || question.options.length === 0) {
-      console.log("Missing options for checkbox:", question);
+      console.error("Missing options for checkbox:", question);
       return (
         <div className="p-4 bg-red-100 rounded-md">
           <p>This checkbox question is missing options.</p>
@@ -402,7 +394,7 @@ const StudentAnswer = () => {
   const renderGrid = () => {
     if (!question?.gridRows || !question?.gridColumns || 
         question.gridRows.length === 0 || question.gridColumns.length === 0) {
-      console.log("Missing grid rows/columns:", question);
+      console.error("Missing grid rows/columns:", question);
       return (
         <div className="p-4 bg-red-100 rounded-md">
           <p>This grid question is missing grid configuration.</p>
