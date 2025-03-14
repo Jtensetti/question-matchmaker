@@ -197,7 +197,13 @@ const Index = () => {
     questionText: string, 
     answerText: string, 
     similarityThreshold: number,
-    semanticMatching: boolean
+    semanticMatching: boolean,
+    questionType: string = "text",
+    options?: string[],
+    ratingMin?: number,
+    ratingMax?: number,
+    gridRows?: string[],
+    gridColumns?: string[]
   ) => {
     if (!teacherId) {
       toast({
@@ -217,7 +223,13 @@ const Index = () => {
             answer: answerText,
             similarity_threshold: similarityThreshold,
             semantic_matching: semanticMatching,
-            teacher_id: teacherId
+            teacher_id: teacherId,
+            question_type: questionType,
+            options: options,
+            rating_min: ratingMin,
+            rating_max: ratingMax,
+            grid_rows: gridRows,
+            grid_columns: gridColumns
           }
         ])
         .select()
@@ -233,7 +245,13 @@ const Index = () => {
           createdAt: new Date(data.created_at),
           similarityThreshold: data.similarity_threshold,
           semanticMatching: data.semantic_matching,
-          teacherId: data.teacher_id
+          teacherId: data.teacher_id,
+          questionType: data.question_type,
+          options: data.options,
+          ratingMin: data.rating_min,
+          ratingMax: data.rating_max,
+          gridRows: data.grid_rows,
+          gridColumns: data.grid_columns
         };
         
         setQuestions(prev => [newQuestion, ...prev]);
@@ -862,3 +880,4 @@ const Index = () => {
 };
 
 export default Index;
+

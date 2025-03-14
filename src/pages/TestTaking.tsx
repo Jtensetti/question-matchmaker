@@ -5,6 +5,7 @@ import { LoadingView } from "@/components/test/LoadingView";
 import { ErrorView } from "@/components/test/ErrorView";
 import { StudentNameForm } from "@/components/test/StudentNameForm";
 import { TestQuestionView } from "@/components/test/TestQuestionView";
+import { toast } from "@/hooks/use-toast";
 
 const TestTaking = () => {
   const { testId } = useParams();
@@ -50,6 +51,16 @@ const TestTaking = () => {
         generateCaptcha={generateCaptcha}
       />
     );
+  }
+
+  const currentQuestion = testQuestions[currentQuestionIndex];
+  if (!currentQuestion) {
+    toast({
+      title: "Error",
+      description: "Could not load question",
+      variant: "destructive",
+    });
+    return <ErrorView onGoBack={() => window.location.href = '/'} />;
   }
 
   return (
