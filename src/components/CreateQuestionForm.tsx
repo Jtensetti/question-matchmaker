@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,14 +177,35 @@ export const CreateQuestionForm = ({ onSubmit }: CreateQuestionFormProps) => {
     const useSemanticMatching = 
       (questionType === "open_ended" || questionType === "fill_in_blank") && semanticMatching;
     
+    // Map the question type to the standardized format
+    let normalizedQuestionType = questionType;
+    switch (questionType) {
+      case "open_ended":
+        normalizedQuestionType = "text";
+        break;
+      case "multiple_choice":
+        normalizedQuestionType = "multiple-choice";
+        break;
+      case "checkboxes":
+        normalizedQuestionType = "checkbox";
+        break;
+      case "grid_matching":
+        normalizedQuestionType = "grid";
+        break;
+      case "fill_in_blank":
+        normalizedQuestionType = "text";
+        break;
+      case "rating":
+        normalizedQuestionType = "rating";
+        break;
+    }
+    
     // Create the answer string for rating questions
     const finalAnswer = questionType === "rating" 
       ? ratingCorrect.toString()
       : answer;
     
-    // Ensure question type is saved as a string, not an object
-    const normalizedQuestionType = String(questionType);
-    console.log("Submitting question with type:", normalizedQuestionType);
+    console.log("Submitting question with normalized type:", normalizedQuestionType);
 
     onSubmit(
       question, 

@@ -56,6 +56,16 @@ export function normalizeQuestionType(questionType: any): string {
         return "grid";
       }
       
+      // If there are options in the parent object, it's likely a multiple choice or checkbox
+      if (typeof questionType === 'object' && 
+          questionType.parent && 
+          questionType.parent.options && 
+          Array.isArray(questionType.parent.options) && 
+          questionType.parent.options.length > 0) {
+        console.log("Found options in parent object:", questionType.parent.options);
+        return "multiple-choice";
+      }
+      
       // Default fallback for database objects with undefined type
       console.log("Object has undefined value - using default type");
       return "multiple-choice";
