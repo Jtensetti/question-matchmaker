@@ -5,19 +5,9 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Question, QuestionType } from "@/types/question";
-import { TextAnswerInput } from "@/components/student-answer/TextAnswerInput";
-import { MultipleChoiceInput } from "@/components/student-answer/MultipleChoiceInput";
-import { RatingInput } from "@/components/student-answer/RatingInput";
-import { GridInput } from "@/components/student-answer/GridInput";
-import { CaptchaInput } from "@/components/student-answer/CaptchaInput";
-import { LoadingState } from "@/components/student-answer/LoadingState";
-import { QuestionNotFound } from "@/components/student-answer/QuestionNotFound";
-import { generateCaptcha } from "@/components/student-answer/captchaUtils";
-import { gridSelectionsToString } from "@/components/question-card/gridUtils";
-import { StudentNameInput } from "@/components/question-card/StudentNameInput";
+import { Question } from "@/types/question";
 
 const StudentAnswer = () => {
   const { questionId } = useParams();
@@ -25,69 +15,43 @@ const StudentAnswer = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [question, setQuestion] = useState<Question | null>(null);
-  const [textAnswer, setTextAnswer] = useState("");
-  const [selectedOption, setSelectedOption] = useState("");
-  const [ratingValue, setRatingValue] = useState(1);
-  const [gridSelections, setGridSelections] = useState<Record<string, string>>({});
+  const [answer, setAnswer] = useState("");
   const [studentName, setStudentName] = useState("");
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   const [captchaQuestion, setCaptchaQuestion] = useState("");
-  const [expectedCaptchaAnswer, setExpectedCaptchaAnswer] = useState("");
-  const [nameInputVisible, setNameInputVisible] = useState(false);
   
-  useEffect(() => {
-    const { question, answer } = generateCaptcha();
-    setCaptchaQuestion(question);
-    setExpectedCaptchaAnswer(answer);
-  }, []);
+  // Simple captcha generation
+  const generateCaptcha = () => {
+    const num1 = Math.floor(Math.random() * 10);
+    const num2 = Math.floor(Math.random() * 10);
+    setCaptchaQuestion(`What is ${num1} + ${num2}?`);
+    return (num1 + num2).toString();
+  };
+  
+  const [expectedCaptchaAnswer, setExpectedCaptchaAnswer] = useState(() => generateCaptcha());
 
   useEffect(() => {
     const fetchQuestion = async () => {
       if (!questionId) return;
       
       try {
-        console.log("Fetching question with ID:", questionId);
-        
         const { data, error } = await supabase
           .from('questions')
           .select('*')
           .eq('id', questionId)
           .single();
 
-        if (error) {
-          console.error('Supabase error when fetching question:', error);
-          throw error;
-        }
+        if (error) throw error;
 
         if (data) {
-          const questionType = data.question_type ?? 'text';
-          
-          const fetchedQuestion: Question = {
+          setQuestion({
             id: data.id,
             text: data.text,
             answer: data.answer,
             createdAt: new Date(data.created_at),
-            similarityThreshold: data.similarity_threshold ?? 0.7,
-            semanticMatching: data.semantic_matching !== false,
-            questionType: questionType as QuestionType,
-            options: data.options,
-            ratingMin: data.rating_min,
-            ratingMax: data.rating_max,
-            gridRows: data.grid_rows,
-            gridColumns: data.grid_columns
-          };
-          
-          setQuestion(fetchedQuestion);
-          
-          if (fetchedQuestion.questionType === 'rating' && fetchedQuestion.ratingMin !== undefined) {
-            setRatingValue(fetchedQuestion.ratingMin);
-          }
-          
-          if (fetchedQuestion.questionType === 'multiple-choice' && 
-              Array.isArray(fetchedQuestion.options) && 
-              fetchedQuestion.options.length > 0) {
-            setSelectedOption(fetchedQuestion.options[0]);
-          }
+            similarityThreshold: data.similarity_threshold || 0.7,
+            semanticMatching: data.semantic_matching !== false
+          });
         } else {
           toast({
             title: "Question not found",
@@ -111,13 +75,6 @@ const StudentAnswer = () => {
     fetchQuestion();
   }, [questionId, navigate]);
 
-  const handleGridCellSelect = (row: string, col: string) => {
-    setGridSelections(prev => ({
-      ...prev,
-      [row]: col
-    }));
-  };
-
   const handleSubmit = async () => {
     if (!question) return;
     
@@ -128,24 +85,6 @@ const StudentAnswer = () => {
         variant: "destructive",
       });
       return;
-    }
-    
-    let answer = "";
-    
-    switch (question.questionType) {
-      case "multiple-choice":
-        answer = selectedOption;
-        break;
-      case "rating":
-        answer = ratingValue.toString();
-        break;
-      case "grid":
-        answer = gridSelectionsToString(gridSelections);
-        break;
-      case "text":
-      default:
-        answer = textAnswer;
-        break;
     }
     
     if (!answer.trim()) {
@@ -163,9 +102,7 @@ const StudentAnswer = () => {
         description: "Please solve the math problem correctly.",
         variant: "destructive",
       });
-      const { question, answer } = generateCaptcha();
-      setCaptchaQuestion(question);
-      setExpectedCaptchaAnswer(answer);
+      setExpectedCaptchaAnswer(generateCaptcha());
       setCaptchaAnswer("");
       return;
     }
@@ -173,6 +110,7 @@ const StudentAnswer = () => {
     setSubmitting(true);
     
     try {
+      // Store the student answer in the database
       const { error } = await supabase
         .from('student_answers')
         .insert([
@@ -190,6 +128,7 @@ const StudentAnswer = () => {
         description: "Your answer has been submitted successfully.",
       });
       
+      // Redirect to a thank you page or show completion message
       navigate(`/thank-you/${question.id}`);
       
     } catch (error) {
@@ -204,81 +143,37 @@ const StudentAnswer = () => {
     }
   };
 
-  const renderQuestionInput = () => {
-    if (!question) return null;
-
-    switch (question.questionType) {
-      case "multiple-choice":
-        return question.options ? (
-          <MultipleChoiceInput
-            options={question.options}
-            selectedOption={selectedOption}
-            setSelectedOption={setSelectedOption}
-          />
-        ) : null;
-      
-      case "rating":
-        const min = question.ratingMin !== undefined ? question.ratingMin : 1;
-        const max = question.ratingMax !== undefined ? question.ratingMax : 5;
-        
-        return (
-          <RatingInput
-            min={min}
-            max={max}
-            ratingValue={ratingValue}
-            setRatingValue={setRatingValue}
-          />
-        );
-      
-      case "grid":
-        if (!question.gridRows?.length || !question.gridColumns?.length) {
-          return <p className="text-muted-foreground">Grid data is missing</p>;
-        }
-        
-        return (
-          <GridInput
-            gridRows={question.gridRows}
-            gridColumns={question.gridColumns}
-            gridSelections={gridSelections}
-            handleGridCellSelect={handleGridCellSelect}
-          />
-        );
-        
-      case "text":
-      default:
-        return (
-          <TextAnswerInput
-            textAnswer={textAnswer}
-            setTextAnswer={setTextAnswer}
-            submitting={submitting}
-          />
-        );
-    }
-  };
-
   if (loading) {
-    return <LoadingState />;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-lg text-muted-foreground">Loading question...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!question) {
-    return <QuestionNotFound />;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
+              <h2 className="text-2xl font-bold">Question Not Found</h2>
+              <p className="text-muted-foreground">
+                The question you're looking for doesn't exist or has been removed.
+              </p>
+              <Button onClick={() => navigate('/')}>
+                Go Back Home
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
-
-  const handleSaveName = () => {
-    if (studentName.trim()) {
-      setNameInputVisible(false);
-    } else {
-      toast({
-        title: "Name required",
-        description: "Please enter your name.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCancelName = () => {
-    setNameInputVisible(false);
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -286,9 +181,6 @@ const StudentAnswer = () => {
         <Card className="w-full">
           <CardHeader>
             <h1 className="text-2xl font-bold">Answer this Question</h1>
-            <div className="text-sm text-muted-foreground">
-              Question type: <span className="font-medium">{question.questionType}</span>
-            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="p-4 bg-muted rounded-md">
@@ -296,39 +188,44 @@ const StudentAnswer = () => {
             </div>
             
             <div className="space-y-4">
-              {nameInputVisible ? (
-                <StudentNameInput
-                  studentName={studentName}
-                  setStudentName={setStudentName}
-                  onCancel={handleCancelName}
-                  onSave={handleSaveName}
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium mb-1">
+                  Your Name
+                </label>
+                <Input
+                  id="name"
+                  placeholder="Enter your name"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  disabled={submitting}
                 />
-              ) : (
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium mb-1">
-                    Your Name
-                  </label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id="name"
-                      placeholder="Enter your name"
-                      value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
-                      disabled={submitting}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              )}
+              </div>
               
-              {renderQuestionInput()}
+              <div>
+                <label htmlFor="answer" className="block text-sm font-medium mb-1">
+                  Your Answer
+                </label>
+                <Input
+                  id="answer"
+                  placeholder="Type your answer here"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  disabled={submitting}
+                />
+              </div>
               
-              <CaptchaInput
-                captchaQuestion={captchaQuestion}
-                captchaAnswer={captchaAnswer}
-                setCaptchaAnswer={setCaptchaAnswer}
-                submitting={submitting}
-              />
+              <div className="p-4 bg-muted rounded-md">
+                <label htmlFor="captcha" className="block text-sm font-medium mb-1">
+                  {captchaQuestion} (Spam Protection)
+                </label>
+                <Input
+                  id="captcha"
+                  placeholder="Solve this simple math problem"
+                  value={captchaAnswer}
+                  onChange={(e) => setCaptchaAnswer(e.target.value)}
+                  disabled={submitting}
+                />
+              </div>
               
               <Button 
                 onClick={handleSubmit} 

@@ -4,13 +4,10 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Question } from "@/types/question";
 import { toast } from "@/hooks/use-toast";
-import { Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CheckCircle, XCircle, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { checkSemanticMatch } from "@/utils/semanticMatching";
-import { QuestionInput } from "@/components/question-card/QuestionInput";
-import { StudentNameInput } from "@/components/question-card/StudentNameInput";
-import { AnswerResults } from "@/components/question-card/AnswerResults";
-import { gridSelectionsToString } from "@/components/question-card/gridUtils";
+import { checkSemanticMatch, checkAnswerCorrectAsync } from "@/utils/semanticMatching";
 
 interface QuestionCardProps {
   question: Question;
@@ -32,32 +29,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [studentName, setStudentName] = useState("");
   const [showNameInput, setShowNameInput] = useState(false);
-  const [selectedRadioOption, setSelectedRadioOption] = useState("");
-  const [ratingValue, setRatingValue] = useState<number>(
-    question.ratingMin !== undefined ? question.ratingMin : 1
-  );
-  const [gridSelections, setGridSelections] = useState<Record<string, string>>({});
-
-  const handleGridCellSelect = (row: string, col: string) => {
-    setGridSelections(prev => ({
-      ...prev,
-      [row]: col
-    }));
-  };
 
   const handleSubmitAnswer = async () => {
-    // Set answer based on question type
-    let answerToCheck = userAnswer;
-    
-    if (question.questionType === "multiple-choice") {
-      answerToCheck = selectedRadioOption;
-    } else if (question.questionType === "rating") {
-      answerToCheck = ratingValue.toString();
-    } else if (question.questionType === "grid") {
-      answerToCheck = gridSelectionsToString(gridSelections);
-    }
-    
-    if (!answerToCheck.trim()) {
+    if (!userAnswer.trim()) {
       toast({
         title: "Tomt svar",
         description: "Skriv ett svar innan du skickar in",
@@ -74,54 +48,21 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     setIsSubmitting(true);
 
     try {
-      let calculatedSimilarity = 0;
-      let correct = false;
+      // Calculate similarity with improved semantic matching
+      const threshold = question.similarityThreshold || 0.7;
       
-      // For text questions, use semantic matching
-      if (question.questionType === "text" || !question.questionType) {
-        const threshold = question.similarityThreshold || 0.7;
-        
-        calculatedSimilarity = await checkSemanticMatch(
-          answerToCheck.trim(),
-          question.answer.trim(),
-          threshold
-        );
-        
-        correct = calculatedSimilarity >= threshold;
-      } 
-      // For multiple choice, exact match is required
-      else if (question.questionType === "multiple-choice") {
-        correct = answerToCheck === question.answer;
-        calculatedSimilarity = correct ? 1 : 0;
-      }
-      // For rating questions, exact match is required
-      else if (question.questionType === "rating") {
-        correct = answerToCheck === question.answer;
-        calculatedSimilarity = correct ? 1 : 0;
-      }
-      // For grid questions, compare the sets of matches
-      else if (question.questionType === "grid") {
-        // Convert both to sets of matches for comparison
-        const expectedMatches = new Set(question.answer.split(',').map(pair => pair.trim()));
-        const userMatches = new Set(answerToCheck.split(',').map(pair => pair.trim()));
-        
-        // Count matches
-        let matchCount = 0;
-        for (const match of userMatches) {
-          if (expectedMatches.has(match)) {
-            matchCount++;
-          }
-        }
-        
-        // Calculate similarity as proportion of correct matches
-        const totalExpected = expectedMatches.size;
-        calculatedSimilarity = totalExpected > 0 ? matchCount / totalExpected : 0;
-        
-        // Correct if all expected matches are present
-        correct = matchCount === totalExpected;
-      }
+      // First, calculate similarity score
+      const calculatedSimilarity = await checkSemanticMatch(
+        userAnswer.trim(),
+        question.answer.trim(),
+        threshold
+      );
       
       setSimilarity(calculatedSimilarity);
+      
+      // Determine if the answer is correct based on similarity threshold
+      const correct = calculatedSimilarity >= threshold;
+      
       setIsCorrect(correct);
       setIsSubmitted(true);
 
@@ -133,7 +74,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             { 
               question_id: question.id,
               student_name: studentName.trim(),
-              answer: answerToCheck.trim()
+              answer: userAnswer.trim()
             }
           ]);
 
@@ -180,9 +121,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
   const resetQuestion = () => {
     setUserAnswer("");
-    setSelectedRadioOption("");
-    setRatingValue(question.ratingMin !== undefined ? question.ratingMin : 1);
-    setGridSelections({});
     setIsSubmitted(false);
     setIsCorrect(null);
     setSimilarity(0);
@@ -200,57 +138,109 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             )}
             <p className="font-medium">{question.text}</p>
             {(isTeacher || isAdmin) && (
-              <div className="text-sm text-muted-foreground mt-1">
-                <p>Svar: {question.answer}</p>
-                <p>Typ: {question.questionType || "text"}</p>
-              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Svar: {question.answer}
+              </p>
             )}
           </div>
           
           {!isSubmitted ? (
-            <div className="space-y-2">
-              {showNameInput ? (
-                <StudentNameInput
-                  studentName={studentName}
-                  setStudentName={setStudentName}
-                  onCancel={() => setShowNameInput(false)}
-                  onSave={handleSaveStudent}
+            showNameInput ? (
+              <div className="space-y-2">
+                <label htmlFor="studentName" className="text-sm font-medium">
+                  Ditt namn
+                </label>
+                <Input
+                  id="studentName"
+                  value={studentName}
+                  onChange={e => setStudentName(e.target.value)}
+                  placeholder="Ange ditt namn"
+                  className="mt-1"
                 />
-              ) : (
-                <>
-                  <QuestionInput
-                    question={question}
-                    userAnswer={userAnswer}
-                    setUserAnswer={setUserAnswer}
-                    selectedRadioOption={selectedRadioOption}
-                    setSelectedRadioOption={setSelectedRadioOption}
-                    ratingValue={ratingValue}
-                    setRatingValue={setRatingValue}
-                    gridSelections={gridSelections}
-                    handleGridCellSelect={handleGridCellSelect}
-                    onSubmit={handleSubmitAnswer}
-                  />
+                <div className="flex space-x-2 mt-2">
                   <Button 
-                    onClick={handleSubmitAnswer} 
-                    className="w-full mt-4"
-                    disabled={isSubmitting}
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowNameInput(false)}
                   >
-                    {isSubmitting ? 'Kontrollerar...' : 'Svara'}
+                    Avbryt
                   </Button>
-                </>
-              )}
-            </div>
+                  <Button 
+                    size="sm"
+                    onClick={handleSaveStudent}
+                  >
+                    Fortsätt
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  value={userAnswer}
+                  onChange={e => setUserAnswer(e.target.value)}
+                  placeholder="Ditt svar..."
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmitAnswer();
+                    }
+                  }}
+                />
+                <Button 
+                  onClick={handleSubmitAnswer} 
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Kontrollerar...' : 'Svara'}
+                </Button>
+              </div>
+            )
           ) : (
-            <AnswerResults
-              question={question}
-              userAnswer={userAnswer}
-              selectedRadioOption={selectedRadioOption}
-              ratingValue={ratingValue}
-              gridSelections={gridSelections}
-              isCorrect={isCorrect}
-              similarity={similarity}
-              onReset={resetQuestion}
-            />
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <p className="font-medium">Ditt svar:</p>
+                <p className="text-muted-foreground">{userAnswer}</p>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <p className="font-medium">Resultat:</p>
+                {isCorrect ? (
+                  <div className="flex items-center text-green-600">
+                    <CheckCircle className="h-5 w-5 mr-1" />
+                    <span>Rätt</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center text-red-600">
+                    <XCircle className="h-5 w-5 mr-1" />
+                    <span>Fel</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <p className="font-medium">Likhet:</p>
+                <div className="flex items-center">
+                  <span className={similarity >= 0.5 ? "text-green-600" : "text-red-600"}>
+                    {Math.round(similarity * 100)}%
+                  </span>
+                </div>
+              </div>
+              
+              {!isCorrect && (
+                <div className="flex items-center space-x-2">
+                  <p className="font-medium">Rätt svar:</p>
+                  <p className="text-muted-foreground">{question.answer}</p>
+                </div>
+              )}
+              
+              <Button 
+                variant="outline" 
+                onClick={resetQuestion} 
+                className="w-full"
+              >
+                Försök igen
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

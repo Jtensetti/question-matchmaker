@@ -7,15 +7,7 @@ export interface Question {
   similarityThreshold?: number;
   semanticMatching?: boolean;
   teacherId?: string;
-  questionType?: QuestionType;
-  options?: string[];
-  ratingMin?: number;
-  ratingMax?: number;
-  gridRows?: string[];
-  gridColumns?: string[];
 }
-
-export type QuestionType = 'text' | 'multiple-choice' | 'rating' | 'grid';
 
 export interface StudentAnswer {
   id: string;
