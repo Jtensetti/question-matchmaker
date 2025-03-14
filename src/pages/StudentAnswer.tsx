@@ -475,7 +475,6 @@ const StudentAnswer = () => {
                 <label htmlFor="answer" className="block text-sm font-medium mb-1">
                   Your Answer
                 </label>
-                
                 {renderQuestionInput()}
               </div>
               
