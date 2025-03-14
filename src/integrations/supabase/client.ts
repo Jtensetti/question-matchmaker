@@ -24,7 +24,7 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Add debugging helper to log database responses in development
+// Add enhanced debugging helper to log database responses in development
 if (import.meta.env.DEV) {
   // Log every Supabase response in development to help debug
   const originalFrom = supabase.from.bind(supabase);
@@ -41,9 +41,64 @@ if (import.meta.env.DEV) {
         return originalThen(
           (data) => {
             console.log(`[Supabase Debug] ${table} select response:`, data);
+            
+            // Special handling for questions table to trace question_type field
+            if (table === 'questions' && data && data.data && data.data.length > 0) {
+              console.log(`[Question Type Debug] Found ${data.data.length} questions`);
+              data.data.forEach((question, index) => {
+                console.log(`Question #${index + 1}:`, {
+                  id: question.id,
+                  question_type: question.question_type,
+                  typeofQuestionType: typeof question.question_type,
+                  question_type_null: question.question_type === null,
+                  question_type_empty: question.question_type === '',
+                });
+              });
+            }
+            
             return onFulfilled?.(data);
           },
           onRejected
+        );
+      };
+      
+      return query;
+    };
+    
+    // Also wrap .eq and other query methods for better tracing
+    const originalEq = result.eq.bind(result);
+    result.eq = function(column, value) {
+      console.log(`[Supabase Query] ${table}.${column} = ${value}`);
+      return originalEq(column, value);
+    };
+
+    // Wrap single() method for better error handling
+    const originalSingle = result.single.bind(result);
+    result.single = function() {
+      const query = originalSingle();
+      
+      const originalThen = query.then.bind(query);
+      query.then = function(onFulfilled, onRejected) {
+        return originalThen(
+          (data) => {
+            console.log(`[Supabase Debug] ${table} single() response:`, data);
+            
+            // Special handling for questions table
+            if (table === 'questions' && data && data.data) {
+              console.log(`[Question Debug] Single question:`, {
+                id: data.data.id,
+                question_type: data.data.question_type,
+                typeofQuestionType: typeof data.data.question_type,
+                hasOptions: Array.isArray(data.data.options) && data.data.options.length > 0,
+              });
+            }
+            
+            return onFulfilled?.(data);
+          },
+          (error) => {
+            console.error(`[Supabase Error] ${table} single() error:`, error);
+            return onRejected?.(error);
+          }
         );
       };
       

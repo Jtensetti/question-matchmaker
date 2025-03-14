@@ -38,7 +38,7 @@ export type Database = {
           grid_rows: string[] | null
           id: string
           options: string[] | null
-          question_type: string | null
+          question_type: string
           rating_max: number | null
           rating_min: number | null
           semantic_matching: boolean | null
@@ -53,7 +53,7 @@ export type Database = {
           grid_rows?: string[] | null
           id?: string
           options?: string[] | null
-          question_type?: string | null
+          question_type?: string
           rating_max?: number | null
           rating_min?: number | null
           semantic_matching?: boolean | null
@@ -68,7 +68,7 @@ export type Database = {
           grid_rows?: string[] | null
           id?: string
           options?: string[] | null
-          question_type?: string | null
+          question_type?: string
           rating_max?: number | null
           rating_min?: number | null
           semantic_matching?: boolean | null
@@ -231,7 +231,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      question_type_enum: "text" | "multiple-choice" | "rating" | "grid"
     }
     CompositeTypes: {
       [_ in never]: never
