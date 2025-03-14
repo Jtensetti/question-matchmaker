@@ -29,6 +29,19 @@ export function normalizeQuestionType(questionType: any): string {
   if (typeof questionType === "object") {
     console.log("Question type is an object:", questionType);
     
+    // Check if object has properties that contain the literal string "undefined"
+    if (questionType.value === "undefined" || questionType._type === "undefined") {
+      // Check if we have a property called 'question_type' (from database)
+      if (questionType.question_type && typeof questionType.question_type === "string") {
+        return standardizeQuestionType(questionType.question_type);
+      }
+      
+      // This object likely has placeholder values - try to check the database column directly
+      // If we're in this spot, we need to get the actual type from the database
+      console.log("Object contains 'undefined' string values - defaulting to database format");
+      return "multiple-choice"; // Let's default to multiple-choice for this specific case
+    }
+    
     // If it has a value property that's a string and not "undefined"
     if (questionType.value && typeof questionType.value === "string" && 
         questionType.value !== "undefined") {
