@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle, AlignLeft, AlignRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Question } from "@/types/question";
+import React from "react";
 
 const StudentAnswer = () => {
   const { questionId } = useParams();
@@ -28,7 +28,6 @@ const StudentAnswer = () => {
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [gridAnswers, setGridAnswers] = useState<Record<string, string>>({});
   
-  // Simple captcha generation
   const generateCaptcha = () => {
     const num1 = Math.floor(Math.random() * 10);
     const num2 = Math.floor(Math.random() * 10);
@@ -104,7 +103,6 @@ const StudentAnswer = () => {
     
     let answerToSubmit = "";
     
-    // Validate and prepare answer based on question type
     switch (question.questionType) {
       case "rating":
         if (ratingValue === null) {
@@ -155,7 +153,6 @@ const StudentAnswer = () => {
         break;
         
       default:
-        // text questions
         if (!answer.trim()) {
           toast({
             title: "Answer required",
@@ -181,7 +178,6 @@ const StudentAnswer = () => {
     setSubmitting(true);
     
     try {
-      // Store the student answer in the database
       const { error } = await supabase
         .from('student_answers')
         .insert([
@@ -199,7 +195,6 @@ const StudentAnswer = () => {
         description: "Your answer has been submitted successfully.",
       });
       
-      // Redirect to a thank you page or show completion message
       navigate(`/thank-you/${question.id}`);
       
     } catch (error) {
@@ -232,16 +227,48 @@ const StudentAnswer = () => {
         
       case "text":
       default:
+        const blankRegex = /___+|\[\.\.\.+\]/g;
+        if (blankRegex.test(question.text)) {
+          return renderFillInBlanks();
+        }
         return (
-          <Input
+          <Textarea
             id="answer"
             placeholder="Type your answer here"
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
+            className="min-h-24"
             disabled={submitting}
           />
         );
     }
+  };
+  
+  const renderFillInBlanks = () => {
+    const blankRegex = /___+|\[\.\.\.+\]/g;
+    const parts = question!.text.split(blankRegex);
+    const blanks = question!.text.match(blankRegex) || [];
+    
+    return (
+      <div className="mt-2 space-y-1">
+        <p className="mb-4 text-sm text-muted-foreground">Fill in the blanks:</p>
+        <div>
+          {parts.map((part, index) => (
+            <React.Fragment key={index}>
+              <span>{part}</span>
+              {index < blanks.length && (
+                <Input
+                  className="inline-block mx-1 w-32"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  disabled={submitting}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    );
   };
   
   const renderRatingScale = () => {
@@ -254,13 +281,13 @@ const StudentAnswer = () => {
     return (
       <div className="space-y-4">
         <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <div className="flex items-center">
-            <AlignLeft className="h-4 w-4 mr-1" />
+          <div className="flex items-center gap-1">
+            <AlignLeft className="h-4 w-4" />
             <span>{min}</span>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-1">
             <span>{max}</span>
-            <AlignRight className="h-4 w-4 ml-1" />
+            <AlignRight className="h-4 w-4" />
           </div>
         </div>
         
@@ -289,12 +316,12 @@ const StudentAnswer = () => {
       <RadioGroup 
         value={selectedOption} 
         onValueChange={setSelectedOption}
-        className="space-y-2"
+        className="space-y-3"
       >
         {question.options.map((option, index) => (
-          <div key={index} className="flex items-center space-x-2">
+          <div key={index} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
             <RadioGroupItem value={option} id={`option-${index}`} />
-            <label htmlFor={`option-${index}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            <label htmlFor={`option-${index}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer w-full">
               {option}
             </label>
           </div>
@@ -307,9 +334,9 @@ const StudentAnswer = () => {
     if (!question?.options || question.options.length === 0) return null;
     
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         {question.options.map((option, index) => (
-          <div key={index} className="flex items-center space-x-2">
+          <div key={index} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
             <Checkbox 
               id={`checkbox-${index}`} 
               checked={selectedOptions.includes(option)}
@@ -323,7 +350,7 @@ const StudentAnswer = () => {
             />
             <label
               htmlFor={`checkbox-${index}`}
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer w-full"
             >
               {option}
             </label>
@@ -358,7 +385,7 @@ const StudentAnswer = () => {
                 <td className="p-2 border bg-muted font-medium text-sm">
                   {row}
                 </td>
-                {question.gridColumns?.map((col, colIndex) => {
+                {question.gridColumns.map((col, colIndex) => {
                   const cellId = `${row}-${col}`;
                   return (
                     <td key={cellId} className="p-2 border">
