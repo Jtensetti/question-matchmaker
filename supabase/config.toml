@@ -3,12 +3,3 @@ project_id = "ssamctnybxlvwrrlfbmz"
 
 [functions.verify-admin]
 verify_jwt = false
-
-[functions.reset-password]
-verify_jwt = false
-
-[functions.verify-reset-token]
-verify_jwt = false
-
-[functions.set-new-password]
-verify_jwt = false

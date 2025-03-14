@@ -114,25 +114,16 @@ export const LoginForm = ({ onSuccess, isLoading, setIsLoading }: LoginFormProps
         />
         <Label htmlFor="rememberMe" className="text-sm">Kom ihåg mig</Label>
       </div>
-      <div className="flex justify-between items-center">
-        <button 
-          type="button" 
-          className="text-sm text-primary hover:underline" 
-          onClick={() => window.location.href = "/forgot-password"}
-        >
-          Glömt lösenord?
-        </button>
-        <Button type="submit" className="w-1/2" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Loggar in...
-            </>
-          ) : (
-            "Logga in"
-          )}
-        </Button>
-      </div>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loggar in...
+          </>
+        ) : (
+          "Logga in"
+        )}
+      </Button>
     </form>
   );
 };
