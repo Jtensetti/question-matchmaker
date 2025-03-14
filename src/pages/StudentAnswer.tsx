@@ -12,6 +12,7 @@ import { Loader2, AlertTriangle, AlignLeft, AlignRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Question } from "@/types/question";
 import React from "react";
+import { normalizeQuestionType } from "@/utils/questionTypeHelper";
 
 const StudentAnswer = () => {
   const { questionId } = useParams();
@@ -53,6 +54,10 @@ const StudentAnswer = () => {
         console.log("Question data from DB:", data);
 
         if (data) {
+          // Normalize the question type
+          const normalizedType = normalizeQuestionType(data.question_type);
+          console.log("Normalized question type:", normalizedType);
+          
           // Properly convert database fields to our Question type
           const questionData: Question = {
             id: data.id,
@@ -61,7 +66,7 @@ const StudentAnswer = () => {
             createdAt: new Date(data.created_at),
             similarityThreshold: data.similarity_threshold || 0.7,
             semanticMatching: data.semantic_matching !== false,
-            questionType: data.question_type || 'text',
+            questionType: normalizedType,
             options: Array.isArray(data.options) ? data.options : [],
             gridRows: Array.isArray(data.grid_rows) ? data.grid_rows : [],
             gridColumns: Array.isArray(data.grid_columns) ? data.grid_columns : [],
@@ -219,10 +224,8 @@ const StudentAnswer = () => {
   const renderQuestionInput = () => {
     if (!question) return null;
     
-    // Ensure questionType is a string, not an object
-    const questionType = typeof question.questionType === 'object' 
-      ? (question.questionType as any)?.value || 'text' 
-      : question.questionType || 'text';
+    // Get the normalized question type
+    const questionType = normalizeQuestionType(question.questionType);
     
     console.log("Rendering input for question type:", questionType);
     

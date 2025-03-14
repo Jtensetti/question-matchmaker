@@ -29,19 +29,31 @@ export function normalizeQuestionType(questionType: any): string {
   if (typeof questionType === "object") {
     console.log("Question type is an object:", questionType);
     
-    // If it has a value property that's a string, use that
-    if (questionType.value && typeof questionType.value === "string") {
+    // If it has a value property that's a string and not "undefined"
+    if (questionType.value && typeof questionType.value === "string" && 
+        questionType.value !== "undefined") {
       return standardizeQuestionType(questionType.value);
     }
     
-    // If it has a type property that's a string, use that
-    if (questionType.type && typeof questionType.type === "string") {
+    // If it has a type property that's a string and not "undefined"
+    if (questionType.type && typeof questionType.type === "string" && 
+        questionType.type !== "undefined") {
       return standardizeQuestionType(questionType.type);
     }
     
     // Check for _type property which might be used in some systems
-    if (questionType._type && typeof questionType._type === "string") {
+    if (questionType._type && typeof questionType._type === "string" && 
+        questionType._type !== "undefined") {
       return standardizeQuestionType(questionType._type);
+    }
+    
+    // Check if any property contains a string value that might be a valid type
+    for (const key in questionType) {
+      if (typeof questionType[key] === "string" && 
+          questionType[key] !== "undefined" &&
+          isValidQuestionType(standardizeQuestionType(questionType[key]))) {
+        return standardizeQuestionType(questionType[key]);
+      }
     }
     
     // Try to use JSON.stringify to get more information
