@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Question, Test } from "@/types/question";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TeacherAuth } from "@/components/TeacherAuth";
 import { TeacherManagement } from "@/components/TeacherManagement";
+import Cookies from "js-cookie";
 
 const Index = () => {
   const [isTeacher, setIsTeacher] = useState(false);
@@ -48,7 +50,24 @@ const Index = () => {
 
   const { toast } = useToast();
 
-  const ADMIN_PASSWORD = "admin456";
+  useEffect(() => {
+    // Check for saved teacher credentials in cookies
+    const savedTeacherId = Cookies.get("teacherId");
+    const savedTeacherEmail = Cookies.get("teacherEmail");
+    const savedTeacherName = Cookies.get("teacherName");
+
+    if (savedTeacherId && savedTeacherEmail && savedTeacherName) {
+      setTeacherId(savedTeacherId);
+      setTeacherEmail(savedTeacherEmail);
+      setTeacherName(savedTeacherName);
+      setIsTeacher(true);
+      
+      toast({
+        title: "Automatisk inloggning",
+        description: `Välkommen tillbaka, ${savedTeacherName}!`,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     fetchQuestions();
@@ -470,6 +489,11 @@ const Index = () => {
   };
 
   const handleLogout = () => {
+    // Clear cookies
+    Cookies.remove("teacherId");
+    Cookies.remove("teacherEmail");
+    Cookies.remove("teacherName");
+    
     setIsTeacher(false);
     setIsAdmin(false);
     setTeacherId(null);

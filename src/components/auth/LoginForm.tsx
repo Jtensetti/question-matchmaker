@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import bcrypt from "bcryptjs";
+import Cookies from "js-cookie";
 
 type LoginFormProps = {
   onSuccess: (teacherId: string, teacherEmail: string, teacherName: string) => void;
@@ -17,6 +18,7 @@ type LoginFormProps = {
 export const LoginForm = ({ onSuccess, isLoading, setIsLoading }: LoginFormProps) => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -50,6 +52,15 @@ export const LoginForm = ({ onSuccess, isLoading, setIsLoading }: LoginFormProps
       // Check if password matches using bcrypt
       if (!teacherData.password_hash || !(await bcrypt.compare(loginPassword, teacherData.password_hash))) {
         throw new Error("Ogiltigt lösenord");
+      }
+
+      // Set cookies if "remember me" is checked
+      if (rememberMe) {
+        // Cookie expiration: 30 days
+        const expirationDays = 30;
+        Cookies.set("teacherId", teacherData.id, { expires: expirationDays });
+        Cookies.set("teacherEmail", teacherData.email, { expires: expirationDays });
+        Cookies.set("teacherName", teacherData.full_name, { expires: expirationDays });
       }
 
       toast({
@@ -93,16 +104,35 @@ export const LoginForm = ({ onSuccess, isLoading, setIsLoading }: LoginFormProps
           disabled={isLoading}
         />
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loggar in...
-          </>
-        ) : (
-          "Logga in"
-        )}
-      </Button>
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="rememberMe"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+        />
+        <Label htmlFor="rememberMe" className="text-sm">Kom ihåg mig</Label>
+      </div>
+      <div className="flex justify-between items-center">
+        <button 
+          type="button" 
+          className="text-sm text-primary hover:underline" 
+          onClick={() => window.location.href = "/forgot-password"}
+        >
+          Glömt lösenord?
+        </button>
+        <Button type="submit" className="w-1/2" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loggar in...
+            </>
+          ) : (
+            "Logga in"
+          )}
+        </Button>
+      </div>
     </form>
   );
 };
