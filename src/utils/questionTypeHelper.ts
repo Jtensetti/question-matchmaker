@@ -14,6 +14,14 @@ export function normalizeQuestionType(questionType: any): string {
     return "text";
   }
   
+  // Log what's actually being received
+  console.log("normalizeQuestionType received:", {
+    value: questionType,
+    type: typeof questionType,
+    isObject: typeof questionType === 'object',
+    stringified: JSON.stringify(questionType)
+  });
+  
   // If it's already a string, return it
   if (typeof questionType === "string") {
     return questionType;
@@ -33,6 +41,28 @@ export function normalizeQuestionType(questionType: any): string {
     if (questionType.type && typeof questionType.type === "string" && 
         questionType.type !== "undefined") {
       return questionType.type;
+    }
+    
+    // Check for _type property which might be used in some systems
+    if (questionType._type && typeof questionType._type === "string" && 
+        questionType._type !== "undefined") {
+      return questionType._type;
+    }
+    
+    // Try to use JSON.stringify to get more information
+    try {
+      const stringified = JSON.stringify(questionType);
+      console.log("Stringified question type:", stringified);
+      
+      // If it's a simple string wrapped in quotes in the JSON, extract it
+      if (stringified && stringified.startsWith('"') && stringified.endsWith('"')) {
+        const extracted = stringified.substring(1, stringified.length - 1);
+        if (isValidQuestionType(extracted)) {
+          return extracted;
+        }
+      }
+    } catch (e) {
+      console.error("Error stringifying question type:", e);
     }
   }
   

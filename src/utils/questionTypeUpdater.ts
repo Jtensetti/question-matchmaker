@@ -57,8 +57,9 @@ export const updateQuestionType = async (
       };
     }
     
+    // Ensure question_type is stored as a plain string
     const updateData: any = {
-      question_type: normalizedType // Store as plain string
+      question_type: normalizedType
     };
     
     // Only include properties that are relevant to the question type
@@ -82,6 +83,9 @@ export const updateQuestionType = async (
       data: updateData,
       dataType: typeof updateData.question_type
     });
+    
+    // Explicitly check the structure before sending to Supabase
+    console.log('JSON.stringify of updateData:', JSON.stringify(updateData));
     
     const { error } = await supabase
       .from('questions')
@@ -154,6 +158,8 @@ export const convertToText = async (questionId: string) => {
  */
 export const getQuestionType = async (questionId: string) => {
   try {
+    console.log('Fetching question type for id:', questionId);
+    
     const { data, error } = await supabase
       .from('questions')
       .select('question_type, options, rating_min, rating_max, grid_rows, grid_columns')
@@ -162,11 +168,19 @@ export const getQuestionType = async (questionId: string) => {
       
     if (error) throw error;
     
+    // Examine the raw response before any processing
+    console.log('Raw database response:', JSON.stringify(data));
+    
     // Check what's coming directly from the database before normalizing
     console.log('Raw question type from database:', {
       id: questionId,
       rawType: data.question_type,
-      typeOfRaw: typeof data.question_type
+      typeOfRaw: typeof data.question_type,
+      rawStructure: data.question_type ? 
+        (typeof data.question_type === 'object' ? 
+          'Object with properties: ' + Object.keys(data.question_type).join(', ') : 
+          'Not an object') : 
+        'Null or undefined'
     });
     
     // Normalize the question type from the database
